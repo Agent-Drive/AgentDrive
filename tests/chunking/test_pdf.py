@@ -9,14 +9,12 @@ def test_supported_types():
 
 @patch("agentdrive.chunking.pdf.DocumentConverter")
 def test_pdf_produces_chunks(mock_converter_cls):
-    mock_doc = MagicMock()
-    mock_doc.document.export_to_markdown.return_value = (
+    mock_result = MagicMock()
+    mock_result.document.export_to_markdown.return_value = (
         "# Report\n\n## Introduction\n\nThis is the intro.\n\n"
         "## Results\n\nThe results show improvement.\n\n"
         "## Conclusion\n\nWe conclude that things are better."
     )
-    mock_result = MagicMock()
-    mock_result.__iter__ = lambda self: iter([mock_doc])
     mock_converter = MagicMock()
     mock_converter.convert.return_value = mock_result
     mock_converter_cls.return_value = mock_converter
@@ -31,15 +29,13 @@ def test_pdf_produces_chunks(mock_converter_cls):
 
 @patch("agentdrive.chunking.pdf.DocumentConverter")
 def test_pdf_breadcrumbs(mock_converter_cls):
-    mock_doc = MagicMock()
-    mock_doc.document.export_to_markdown.return_value = (
+    mock_result = MagicMock()
+    mock_result.document.export_to_markdown.return_value = (
         "# Guide\n\n## Setup\n\n"
         + "Install the package by running the installer script. "
         * 20
         + "\n"
     )
-    mock_result = MagicMock()
-    mock_result.__iter__ = lambda self: iter([mock_doc])
     mock_converter = MagicMock()
     mock_converter.convert.return_value = mock_result
     mock_converter_cls.return_value = mock_converter
