@@ -16,12 +16,20 @@ TEST_DATABASE_URL = os.environ.get(
 
 
 @pytest.fixture(autouse=True)
-def mock_embed_file_chunks_in_ingest():
-    """Prevent real Voyage AI calls during ingest tests by no-op'ing the pipeline call."""
-    async def _noop(*args, **kwargs) -> int:
+def mock_enrichment_and_embedding():
+    """Prevent real API calls during tests."""
+    async def _noop_embed(*args, **kwargs) -> int:
         return 0
 
-    with patch("agentdrive.services.ingest.embed_file_chunks", side_effect=_noop):
+    async def _noop_enrich(doc_text, groups):
+        return groups
+
+    async def _noop_aliases(groups):
+        return []
+
+    with patch("agentdrive.services.ingest.embed_file_chunks", side_effect=_noop_embed), \
+         patch("agentdrive.services.ingest.enrich_chunks", side_effect=_noop_enrich), \
+         patch("agentdrive.services.ingest.generate_table_aliases", side_effect=_noop_aliases):
         yield
 
 

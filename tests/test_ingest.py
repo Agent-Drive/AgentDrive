@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 import pytest_asyncio
 from agentdrive.models.file import File
@@ -58,3 +58,22 @@ async def test_process_file_failure_sets_status(mock_storage_cls, test_file, db_
     await process_file(test_file.id, db_session)
     await db_session.refresh(test_file)
     assert test_file.status == FileStatus.FAILED
+
+
+@pytest.mark.asyncio
+@patch("agentdrive.services.ingest.generate_table_aliases", new_callable=AsyncMock)
+@patch("agentdrive.services.ingest.enrich_chunks", new_callable=AsyncMock)
+@patch("agentdrive.services.ingest.embed_file_chunks", new_callable=AsyncMock)
+@patch("agentdrive.services.ingest.StorageService")
+async def test_process_file_calls_enrichment(mock_storage_cls, mock_embed, mock_enrich, mock_aliases, test_file, db_session):
+    mock_storage = MagicMock()
+    mock_storage.download.return_value = b"# Doc\n\n## Section\n\nContent."
+    mock_storage_cls.return_value = mock_storage
+
+    mock_enrich.side_effect = lambda doc, groups: groups
+    mock_aliases.return_value = []
+
+    await process_file(test_file.id, db_session)
+
+    mock_enrich.assert_called_once()
+    mock_aliases.assert_called_once()

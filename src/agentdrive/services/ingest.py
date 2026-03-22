@@ -3,7 +3,11 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from agentdrive.chunking.registry import ChunkerRegistry
+from agentdrive.chunking.tokens import count_tokens
+from agentdrive.enrichment.contextual import enrich_chunks
+from agentdrive.enrichment.table_questions import generate_table_aliases
 from agentdrive.models.chunk import Chunk, ParentChunk
+from agentdrive.models.chunk_alias import ChunkAlias
 from agentdrive.models.file import File
 from agentdrive.models.types import FileStatus
 from agentdrive.services.storage import StorageService
@@ -30,6 +34,16 @@ async def process_file(file_id: uuid.UUID, session: AsyncSession) -> None:
         chunker = registry.get_chunker(file.content_type)
         chunk_groups = chunker.chunk_bytes(data, file.filename)
 
+        # Get document text for enrichment
+        document_text = data.decode("utf-8", errors="replace")
+
+        # Enrich all chunks with LLM context
+        chunk_groups = await enrich_chunks(document_text, chunk_groups)
+
+        # Generate table aliases
+        table_aliases = await generate_table_aliases(chunk_groups)
+
+        chunk_id_map = {}
         chunk_index = 0
         for group in chunk_groups:
             parent_record = ParentChunk(
@@ -51,7 +65,20 @@ async def process_file(file_id: uuid.UUID, session: AsyncSession) -> None:
                     content_type=child.content_type,
                 )
                 session.add(chunk_record)
+                await session.flush()
+                chunk_id_map[id(child)] = chunk_record.id
                 chunk_index += 1
+
+        for alias_data in table_aliases:
+            chunk_db_id = chunk_id_map.get(id(alias_data["chunk"]))
+            if chunk_db_id:
+                alias_record = ChunkAlias(
+                    chunk_id=chunk_db_id,
+                    file_id=file.id,
+                    content=alias_data["question"],
+                    token_count=count_tokens(alias_data["question"]),
+                )
+                session.add(alias_record)
 
         file.status = FileStatus.READY
         await embed_file_chunks(file.id, session)
