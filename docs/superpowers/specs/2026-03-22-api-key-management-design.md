@@ -44,6 +44,8 @@ $ agentdrive login
 
 **Index:** `idx_api_keys_prefix ON api_keys(key_prefix)`
 
+**Prefix collisions:** 8 alphanumeric chars gives ~2.8 trillion combinations. Collisions are astronomically unlikely, but the auth flow handles it correctly — the query may return multiple rows, and bcrypt compare is run against each match (typically 1).
+
 ### Key format
 
 ```
@@ -73,7 +75,7 @@ sk-ad-rfy83kq1xT9mZpL4nB7wCvDjHgF2sA6e
 1. Extract prefix from bearer token (8 chars after `sk-ad-`)
 2. `SELECT * FROM api_keys WHERE key_prefix = ? AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > now())`
 3. bcrypt compare full key against `key_hash`
-4. `UPDATE last_used = now()`
+4. `UPDATE last_used = now()` (acceptable write-per-request for current scale; batch/sample later if needed)
 5. Return associated tenant
 
 **Legacy fallback:** Keys without `sk-ad-` prefix hit a fallback path that queries `key_prefix = 'legacy__'` and loops bcrypt comparisons. Removed once all tenants rotate.
@@ -122,7 +124,7 @@ sk-ad-rfy83kq1xT9mZpL4nB7wCvDjHgF2sA6e
 
 ### MCP server key resolution
 
-1. Check `AGENTDRIVE_API_KEY` env var
+1. Check `AGENT_DRIVE_API_KEY` env var (matches existing MCP server convention)
 2. If empty → read `~/.agentdrive/credentials`
 3. If neither → error: "Run `agentdrive login` first"
 
@@ -158,7 +160,7 @@ Priority: env var > credentials file.
 | Package        | Purpose                     |
 |----------------|-----------------------------|
 | workos-python  | WorkOS SDK for auth         |
-| click or typer | CLI framework               |
+| typer          | CLI framework (built on click, adds type hints) |
 
 ## File Changes
 
@@ -182,6 +184,8 @@ src/agentdrive/
 
 alembic/versions/
 └── 003_api_keys.py          ← NEW migration
+
+pyproject.toml                   ← MODIFIED (add [project.scripts] agentdrive entry point)
 ```
 
 ## Design Decisions
