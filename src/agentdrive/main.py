@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 
 from agentdrive.config import settings
-from agentdrive.routers import collections, files
+from agentdrive.routers import collections, files, search
 
 
 def create_app() -> FastAPI:
@@ -13,6 +13,7 @@ def create_app() -> FastAPI:
     )
     app.include_router(collections.router)
     app.include_router(files.router)
+    app.include_router(search.router)
 
     @app.get("/health")
     async def health():
