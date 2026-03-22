@@ -41,7 +41,7 @@ async def vector_search(
     query = text(f"""
         SELECT c.id, c.file_id, c.content, c.context_prefix, c.token_count,
                c.content_type, c.metadata, c.parent_chunk_id,
-               c.embedding <=> :embedding::halfvec(256) AS distance
+               c.embedding <=> CAST(:embedding AS halfvec(256)) AS distance
         FROM chunks c
         JOIN files f ON c.file_id = f.id
         WHERE {where} AND c.embedding IS NOT NULL
