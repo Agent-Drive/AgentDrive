@@ -163,9 +163,17 @@ CREATE TABLE parent_chunks (
 ALTER TABLE chunks ADD COLUMN parent_chunk_id uuid REFERENCES parent_chunks(id);
 
 -- Indexes
-CREATE INDEX idx_chunks_embedding ON chunks
+-- HNSW for non-code chunks (voyage-4 space)
+CREATE INDEX idx_chunks_embedding_docs ON chunks
     USING hnsw (embedding halfvec_cosine_ops)
-    WITH (m = 16, ef_construction = 128);
+    WITH (m = 16, ef_construction = 128)
+    WHERE content_type != 'code';
+
+-- HNSW for code chunks (voyage-code-3 space)
+CREATE INDEX idx_chunks_embedding_code ON chunks
+    USING hnsw (embedding halfvec_cosine_ops)
+    WITH (m = 16, ef_construction = 128)
+    WHERE content_type = 'code';
 
 CREATE INDEX idx_chunks_file ON chunks(file_id);
 CREATE INDEX idx_chunks_content_fts ON chunks
@@ -184,7 +192,7 @@ CREATE INDEX idx_collections_tenant ON collections(tenant_id);
 - Two embedding columns: `halfvec(256)` for fast HNSW, `halfvec(1024)` for re-ranking
 - `parent_chunks` table enables small-to-big retrieval pattern
 - GIN index on `content` for Postgres native full-text search (BM25 approximation)
-- Code chunks use the same table but are embedded with voyage-code-3 (separate vector space)
+- Code chunks use the same `chunks` table with `content_type = 'code'`. They get a **separate filtered HNSW index** (partial index on `content_type = 'code'`). Search queries both indexes and merges via RRF.
 
 ---
 
@@ -209,7 +217,7 @@ Type Detection (MIME + extension + content sniffing)
      │
      ├──► Notebook    → Cell-pair grouping parser
      │
-     ├──► Image       → Caption + OCR extraction
+     ├──► Image       → OCR text extraction (basic, no multi-modal search)
      │
      └──► Plain text  → Paragraph-based parser
               │
@@ -234,7 +242,11 @@ Type Detection (MIME + extension + content sniffing)
 
 ### 4.1 File Processing is Async
 
-Upload returns immediately with file ID and `status: pending`. Processing happens in a background task (asyncio). The agent can poll file status or receive a callback when ready.
+Upload returns immediately with file ID and `status: pending`. Processing happens in a background asyncio task within the same process (Phase 1). The agent can poll `get_file_status` to check progress.
+
+**Max upload size:** 32MB (Cloud Run default). Documents larger than this are rejected with 413. Streaming/resumable uploads are Phase 2.
+
+**Scale path:** If asyncio background tasks become a bottleneck (many concurrent uploads), migrate to Cloud Tasks or Pub/Sub for decoupled worker processing.
 
 ---
 
@@ -744,7 +756,7 @@ POST /v1/search
 - LLM-based contextual retrieval (Tier 3 context generation)
 - Late chunking (requires Jina model support)
 - Synthetic question generation for tables
-- Image captioning / multi-modal search
+- Image captioning / multi-modal semantic search (basic OCR text extraction IS in scope)
 - Real-time file sync (watch directories)
 - Webhook notifications for processing completion
 - Usage metering / billing
@@ -754,7 +766,5 @@ POST /v1/search
 ## 14. Open Questions
 
 1. **BM25 scaling:** Application-layer BM25 works at <500K documents. When do we add Elasticsearch?
-2. **Code index separation:** Should code chunks live in a separate table or same table with filtered HNSW?
-3. **Embedding dimension:** Start with 256d MRL or go straight to 512d for better quality?
-4. **Background processing:** asyncio tasks vs Cloud Tasks vs Pub/Sub for ingest pipeline?
-5. **Rate limiting:** Per-tenant rate limits on search and upload?
+2. **Embedding dimension:** Start with 256d MRL or go straight to 512d for better quality?
+3. **Rate limiting:** Per-tenant rate limits on search and upload?
