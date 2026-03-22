@@ -1,51 +1,54 @@
-import asyncio
+import os
 from collections.abc import AsyncGenerator
 
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from agentdrive.models.base import Base
 
-TEST_DATABASE_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/agentdrive_test"
+TEST_DATABASE_URL = os.environ.get(
+    "TEST_DATABASE_URL",
+    "postgresql+asyncpg://postgres:postgres@localhost:5433/agentdrive_test",
+)
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
-
-
-@pytest_asyncio.fixture(scope="session")
-async def test_engine():
-    engine = create_async_engine(TEST_DATABASE_URL, echo=False)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    yield engine
+@pytest_asyncio.fixture
+async def db_engine():
+    """Create engine, drop+recreate tables for clean state each test."""
+    engine = create_async_engine(TEST_DATABASE_URL, echo=False, pool_size=5)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+    yield engine
     await engine.dispose()
 
 
 @pytest_asyncio.fixture
-async def db_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
-    session_factory = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
-    async with session_factory() as session:
+async def db_session_factory(db_engine):
+    """Session factory tied to test engine."""
+    return async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
+
+
+@pytest_asyncio.fixture
+async def db_session(db_session_factory) -> AsyncGenerator[AsyncSession, None]:
+    """Session for direct DB operations in tests."""
+    async with db_session_factory() as session:
         yield session
         await session.rollback()
 
 
 @pytest_asyncio.fixture
-async def client(test_engine, db_session) -> AsyncGenerator[AsyncClient, None]:
+async def client(db_engine, db_session_factory) -> AsyncGenerator[AsyncClient, None]:
+    """Test HTTP client with FastAPI app using test DB."""
     from agentdrive.db.session import get_session
     from agentdrive.main import create_app
 
     app = create_app()
 
     async def override_session():
-        yield db_session
+        async with db_session_factory() as session:
+            yield session
 
     app.dependency_overrides[get_session] = override_session
 
