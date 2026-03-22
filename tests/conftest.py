@@ -42,6 +42,18 @@ async def db_engine():
         await conn.execute(sa_text(
             "ALTER TABLE chunks ADD COLUMN IF NOT EXISTS embedding_full halfvec(1024)"
         ))
+        await conn.execute(sa_text(
+            "CREATE TABLE IF NOT EXISTS chunk_aliases ("
+            "id uuid PRIMARY KEY DEFAULT gen_random_uuid(), "
+            "chunk_id uuid REFERENCES chunks(id) ON DELETE CASCADE, "
+            "file_id uuid REFERENCES files(id) ON DELETE CASCADE, "
+            "content text NOT NULL, "
+            "token_count integer NOT NULL, "
+            "created_at timestamptz DEFAULT now())"
+        ))
+        await conn.execute(sa_text(
+            "ALTER TABLE chunk_aliases ADD COLUMN IF NOT EXISTS embedding halfvec(256)"
+        ))
     yield engine
     await engine.dispose()
 
