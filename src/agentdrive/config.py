@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     gcs_bucket: str = "agentdrive-files"
     voyage_api_key: str = ""
     cohere_api_key: str = ""
+    anthropic_api_key: str = ""
     environment: str = "development"
     max_upload_bytes: int = 32 * 1024 * 1024  # 32MB
 
