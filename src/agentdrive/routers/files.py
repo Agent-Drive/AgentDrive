@@ -1,0 +1,98 @@
+import uuid
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from agentdrive.config import settings
+from agentdrive.db.session import async_session_factory, get_session
+from agentdrive.dependencies import get_current_tenant
+from agentdrive.models.file import File as FileModel
+from agentdrive.models.tenant import Tenant
+from agentdrive.schemas.files import FileDetailResponse, FileListResponse, FileUploadResponse
+from agentdrive.services.file_type import detect_content_type
+from agentdrive.services.ingest import process_file
+from agentdrive.services.storage import StorageService
+
+router = APIRouter(prefix="/v1/files", tags=["files"])
+
+
+@router.post("", status_code=202, response_model=FileUploadResponse)
+async def upload_file(
+    file: UploadFile = File(...),
+    collection: uuid.UUID | None = Form(None),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+    tenant: Tenant = Depends(get_current_tenant),
+    session: AsyncSession = Depends(get_session),
+):
+    data = await file.read()
+    if len(data) > settings.max_upload_bytes:
+        raise HTTPException(status_code=413, detail="File exceeds 32MB limit")
+    content_type = detect_content_type(file.filename or "unknown", file.content_type)
+    file_id = uuid.uuid4()
+    storage = StorageService()
+    gcs_path = storage.upload(tenant.id, file_id, file.filename or "unknown", data, file.content_type or "")
+    file_record = FileModel(
+        id=file_id, tenant_id=tenant.id, collection_id=collection,
+        filename=file.filename or "unknown", content_type=content_type,
+        gcs_path=gcs_path, file_size=len(data), status="pending",
+    )
+    session.add(file_record)
+    await session.commit()
+    await session.refresh(file_record)
+
+    async def run_ingest():
+        async with async_session_factory() as ingest_session:
+            await process_file(file_record.id, ingest_session)
+
+    background_tasks.add_task(run_ingest)
+    return FileUploadResponse.model_validate(file_record)
+
+
+@router.get("/{file_id}", response_model=FileDetailResponse)
+async def get_file(
+    file_id: uuid.UUID,
+    tenant: Tenant = Depends(get_current_tenant),
+    session: AsyncSession = Depends(get_session),
+):
+    result = await session.execute(
+        select(FileModel).where(FileModel.id == file_id, FileModel.tenant_id == tenant.id)
+    )
+    file_record = result.scalar_one_or_none()
+    if not file_record:
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileDetailResponse.model_validate(file_record)
+
+
+@router.get("", response_model=FileListResponse)
+async def list_files(
+    collection: uuid.UUID | None = None,
+    tenant: Tenant = Depends(get_current_tenant),
+    session: AsyncSession = Depends(get_session),
+):
+    query = select(FileModel).where(FileModel.tenant_id == tenant.id)
+    if collection:
+        query = query.where(FileModel.collection_id == collection)
+    query = query.order_by(FileModel.created_at.desc())
+    result = await session.execute(query)
+    files = result.scalars().all()
+    return FileListResponse(
+        files=[FileDetailResponse.model_validate(f) for f in files],
+        total=len(files),
+    )
+
+
+@router.delete("/{file_id}", status_code=204)
+async def delete_file(
+    file_id: uuid.UUID,
+    tenant: Tenant = Depends(get_current_tenant),
+    session: AsyncSession = Depends(get_session),
+):
+    result = await session.execute(
+        select(FileModel).where(FileModel.id == file_id, FileModel.tenant_id == tenant.id)
+    )
+    file_record = result.scalar_one_or_none()
+    if not file_record:
+        raise HTTPException(status_code=404, detail="File not found")
+    storage = StorageService()
+    storage.delete(file_record.gcs_path)
+    await session.delete(file_record)
+    await session.commit()

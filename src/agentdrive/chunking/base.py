@@ -1,0 +1,33 @@
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+
+
+@dataclass
+class ChunkResult:
+    content: str
+    context_prefix: str
+    token_count: int
+    content_type: str  # text, code, table, image
+    metadata: dict = field(default_factory=dict)
+
+
+@dataclass
+class ParentChildChunks:
+    parent: ChunkResult
+    children: list[ChunkResult]
+
+
+class BaseChunker(ABC):
+    @abstractmethod
+    def chunk(self, content: str, filename: str, metadata: dict | None = None) -> list[ParentChildChunks]:
+        """Process text content and return parent-child chunk groups."""
+        ...
+
+    def chunk_bytes(self, data: bytes, filename: str, metadata: dict | None = None) -> list[ParentChildChunks]:
+        """Process binary content. Override for binary formats (PDF, XLSX). Default decodes as UTF-8."""
+        return self.chunk(data.decode("utf-8", errors="replace"), filename, metadata)
+
+    @abstractmethod
+    def supported_types(self) -> list[str]:
+        """Return list of content_type strings this chunker handles."""
+        ...

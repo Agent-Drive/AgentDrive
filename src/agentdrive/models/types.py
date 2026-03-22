@@ -1,0 +1,21 @@
+import enum
+
+
+class FileStatus(str, enum.Enum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    READY = "ready"
+    FAILED = "failed"
+
+
+class ContentType(str, enum.Enum):
+    PDF = "pdf"
+    MARKDOWN = "markdown"
+    CODE = "code"
+    JSON = "json"
+    YAML = "yaml"
+    CSV = "csv"
+    XLSX = "xlsx"
+    NOTEBOOK = "notebook"
+    IMAGE = "image"
+    TEXT = "text"
