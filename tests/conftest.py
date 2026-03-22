@@ -1,6 +1,8 @@
 import os
 from collections.abc import AsyncGenerator
+from unittest.mock import AsyncMock, patch
 
+import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -13,13 +15,33 @@ TEST_DATABASE_URL = os.environ.get(
 )
 
 
+@pytest.fixture(autouse=True)
+def mock_embed_file_chunks_in_ingest():
+    """Prevent real Voyage AI calls during ingest tests by no-op'ing the pipeline call."""
+    async def _noop(*args, **kwargs) -> int:
+        return 0
+
+    with patch("agentdrive.services.ingest.embed_file_chunks", side_effect=_noop):
+        yield
+
+
 @pytest_asyncio.fixture
 async def db_engine():
     """Create engine, drop+recreate tables for clean state each test."""
+    from sqlalchemy import text as sa_text
+
     engine = create_async_engine(TEST_DATABASE_URL, echo=False, pool_size=5)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+        await conn.execute(sa_text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(Base.metadata.create_all)
+        # pgvector halfvec columns are added via migration, not ORM metadata
+        await conn.execute(sa_text(
+            "ALTER TABLE chunks ADD COLUMN IF NOT EXISTS embedding halfvec(256)"
+        ))
+        await conn.execute(sa_text(
+            "ALTER TABLE chunks ADD COLUMN IF NOT EXISTS embedding_full halfvec(1024)"
+        ))
     yield engine
     await engine.dispose()
 

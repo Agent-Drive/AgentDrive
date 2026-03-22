@@ -7,6 +7,7 @@ from agentdrive.models.chunk import Chunk, ParentChunk
 from agentdrive.models.file import File
 from agentdrive.models.types import FileStatus
 from agentdrive.services.storage import StorageService
+from agentdrive.embedding.pipeline import embed_file_chunks
 
 logger = logging.getLogger(__name__)
 registry = ChunkerRegistry()
@@ -53,6 +54,7 @@ async def process_file(file_id: uuid.UUID, session: AsyncSession) -> None:
                 chunk_index += 1
 
         file.status = FileStatus.READY
+        await embed_file_chunks(file.id, session)
         await session.commit()
         logger.info(f"File {file_id} processed: {chunk_index} chunks created")
 
