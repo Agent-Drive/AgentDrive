@@ -52,7 +52,7 @@ async def vector_search(
     result = await session.execute(query, params)
     rows = result.fetchall()
 
-    return [
+    results = [
         SearchResult(
             chunk_id=row.id, file_id=row.file_id, content=row.content,
             context_prefix=row.context_prefix, token_count=row.token_count,
@@ -61,3 +61,37 @@ async def vector_search(
         )
         for row in rows
     ]
+
+    # Also search chunk aliases (synthetic questions for tables)
+    alias_query = text(f"""
+        SELECT c.id, c.file_id, c.content, c.context_prefix, c.token_count,
+               c.content_type, c.metadata, c.parent_chunk_id,
+               ca.embedding <=> CAST(:embedding AS halfvec(256)) AS distance
+        FROM chunk_aliases ca
+        JOIN chunks c ON ca.chunk_id = c.id
+        JOIN files f ON c.file_id = f.id
+        WHERE {where} AND ca.embedding IS NOT NULL
+        ORDER BY distance
+        LIMIT :top_k
+    """)
+
+    alias_result = await session.execute(alias_query, params)
+    alias_rows = alias_result.fetchall()
+
+    # Deduplicate — prefer better score from main query
+    seen_ids = {r.chunk_id for r in results}
+    for row in alias_rows:
+        if row.id not in seen_ids:
+            results.append(SearchResult(
+                chunk_id=row.id, file_id=row.file_id, content=row.content,
+                context_prefix=row.context_prefix, token_count=row.token_count,
+                content_type=row.content_type, score=1.0 - row.distance,
+                metadata=row.metadata or {}, parent_chunk_id=row.parent_chunk_id,
+            ))
+            seen_ids.add(row.id)
+
+    # Re-sort by score and limit
+    results.sort(key=lambda r: r.score, reverse=True)
+    results = results[:top_k]
+
+    return results

@@ -28,6 +28,7 @@ def mock_enrichment_and_embedding():
         return []
 
     with patch("agentdrive.services.ingest.embed_file_chunks", side_effect=_noop_embed), \
+         patch("agentdrive.services.ingest.embed_file_aliases", side_effect=_noop_embed), \
          patch("agentdrive.services.ingest.enrich_chunks", side_effect=_noop_enrich), \
          patch("agentdrive.services.ingest.generate_table_aliases", side_effect=_noop_aliases):
         yield

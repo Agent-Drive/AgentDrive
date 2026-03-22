@@ -41,3 +41,36 @@ async def embed_file_chunks(file_id: uuid.UUID, session: AsyncSession) -> int:
     await session.commit()
     logger.info(f"Embedded {embedded_count} chunks for file {file_id}")
     return embedded_count
+
+
+async def embed_file_aliases(file_id: uuid.UUID, session: AsyncSession) -> int:
+    """Embed all chunk aliases for a file."""
+    from agentdrive.models.chunk_alias import ChunkAlias
+
+    client = EmbeddingClient()
+    result = await session.execute(
+        select(ChunkAlias).where(ChunkAlias.file_id == file_id)
+    )
+    aliases = result.scalars().all()
+    if not aliases:
+        return 0
+
+    embedded_count = 0
+    for i in range(0, len(aliases), BATCH_SIZE):
+        batch = aliases[i:i + BATCH_SIZE]
+        texts = [a.content for a in batch]
+        # Aliases are synthetic questions — embed as queries for better matching
+        vectors = client.embed(texts, input_type="query", content_type="text")
+
+        for alias, vector in zip(batch, vectors):
+            vec_256 = client.truncate(vector, 256)
+            vec_str = "[" + ",".join(str(v) for v in vec_256) + "]"
+            await session.execute(
+                text("UPDATE chunk_aliases SET embedding = :emb WHERE id = :alias_id"),
+                {"emb": vec_str, "alias_id": alias.id},
+            )
+            embedded_count += 1
+
+    await session.commit()
+    logger.info(f"Embedded {embedded_count} aliases for file {file_id}")
+    return embedded_count
