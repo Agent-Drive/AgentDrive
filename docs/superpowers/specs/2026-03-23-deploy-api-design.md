@@ -164,12 +164,15 @@ spec:
               port: 8080
             initialDelaySeconds: 5
             periodSeconds: 5
-            failureThreshold: 3
+            timeoutSeconds: 5
+            failureThreshold: 6
           livenessProbe:
             httpGet:
               path: /health
               port: 8080
             periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
 ```
 
 GitHub Actions replaces the `image: ...api:latest` placeholder with the actual commit SHA before deploying (e.g., `api:abc1234`).
