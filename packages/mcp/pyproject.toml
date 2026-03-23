@@ -9,6 +9,9 @@ dependencies = [
     "typer>=0.15.0",
 ]
 
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
 [project.scripts]
 agentdrive-mcp = "agentdrive_mcp.cli:app"
 
