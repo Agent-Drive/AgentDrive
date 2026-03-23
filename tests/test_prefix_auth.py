@@ -12,7 +12,7 @@ LEGACY_KEY = "old-style-key-no-prefix"
 
 @pytest_asyncio.fixture
 async def tenant_with_new_key(db_session: AsyncSession):
-    tenant = Tenant(name="New Format Tenant", api_key_hash="unused")
+    tenant = Tenant(name="New Format Tenant")
     db_session.add(tenant)
     await db_session.flush()
     raw_key, prefix, key_hash = generate_api_key()
@@ -24,7 +24,7 @@ async def tenant_with_new_key(db_session: AsyncSession):
 
 @pytest_asyncio.fixture
 async def tenant_with_legacy_key(db_session: AsyncSession):
-    tenant = Tenant(name="Legacy Tenant", api_key_hash=hash_api_key(LEGACY_KEY))
+    tenant = Tenant(name="Legacy Tenant")
     db_session.add(tenant)
     await db_session.flush()
     api_key = ApiKey(tenant_id=tenant.id, key_prefix="legacy__", key_hash=hash_api_key(LEGACY_KEY), name="migrated")

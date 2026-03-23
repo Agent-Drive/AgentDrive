@@ -34,7 +34,7 @@ async def test_exchange_creates_tenant(client, db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_exchange_existing_tenant(client, db_session: AsyncSession):
-    tenant = Tenant(name="Existing User", api_key_hash="unused", workos_user_id="workos-user-456")
+    tenant = Tenant(name="Existing User", workos_user_id="workos-user-456")
     db_session.add(tenant)
     await db_session.commit()
     await db_session.refresh(tenant)

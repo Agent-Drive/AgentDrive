@@ -11,7 +11,7 @@ TEST_API_KEY = "sk-ad-testpre1restofthekeythatislongenough"
 
 @pytest_asyncio.fixture
 async def authed_client(client, db_session: AsyncSession):
-    tenant = Tenant(name="Test Tenant", api_key_hash="unused")
+    tenant = Tenant(name="Test Tenant")
     db_session.add(tenant)
     await db_session.flush()
     prefix = parse_key_prefix(TEST_API_KEY)

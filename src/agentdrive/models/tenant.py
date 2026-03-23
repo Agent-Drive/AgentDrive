@@ -8,7 +8,6 @@ from agentdrive.models.base import Base, TimestampMixin, UUIDPrimaryKey
 class Tenant(UUIDPrimaryKey, TimestampMixin, Base):
     __tablename__ = "tenants"
     name: Mapped[str] = mapped_column(Text, nullable=False)
-    api_key_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
     workos_user_id: Mapped[str | None] = mapped_column(Text, unique=True)
     settings: Mapped[dict] = mapped_column(JSONB, server_default="{}")
 
