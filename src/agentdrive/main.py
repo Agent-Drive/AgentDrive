@@ -26,7 +26,12 @@ def create_app() -> FastAPI:
 
     @app.get("/install.sh", response_class=PlainTextResponse)
     async def install_script():
-        script_path = Path(__file__).resolve().parent.parent.parent / "scripts" / "install.sh"
+        # In Docker: WORKDIR /app, scripts at /app/scripts/
+        # In dev: scripts/ is at project root relative to cwd
+        script_path = Path("scripts/install.sh")
+        if not script_path.is_file():
+            # Fallback for running from source tree
+            script_path = Path(__file__).resolve().parent.parent.parent / "scripts" / "install.sh"
         if not script_path.is_file():
             return PlainTextResponse("install script not found", status_code=404)
         return PlainTextResponse(script_path.read_text())
