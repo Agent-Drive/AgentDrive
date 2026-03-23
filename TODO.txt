@@ -1,13 +1,14 @@
-WorkOS SDK validation COMPLETE (2026-03-22). Key findings applied to spec and plan:
+WorkOS SDK validation COMPLETE (2026-03-22). All findings applied to spec and plan.
 
-1. FIXED: create_auth_url() → get_authorization_url() (verified via official Python SDK reference)
-2. FIXED: WorkOS has native CLI Auth (RFC 8628 device flow) — replaced custom device flow
-   - CLI talks directly to WorkOS /authorize/device and /token
-   - Backend only needs POST /auth/exchange (accepts WorkOS access_token, returns sk-ad- key)
-   - Deleted: /auth/device, /auth/callback, /auth/token endpoints + in-memory _device_codes dict
-3. VERIFIED: WorkOSClient(api_key=..., client_id=...) constructor is correct for SDK v4+
-4. VERIFIED: authenticate_with_code(code=code) signature correct, returns .user with id/email/first_name/last_name
+Resolved:
+1. FIXED: create_auth_url() → get_authorization_url()
+2. FIXED: Replaced custom device flow with WorkOS native CLI Auth (RFC 8628)
+3. VERIFIED: WorkOSClient(api_key=..., client_id=...) correct for SDK v4+
+4. VERIFIED: authenticate_with_code(code=code) correct, returns .user with id/email/first_name/last_name
 5. VERIFIED: provider="authkit" is valid string value
-6. NOTED: WorkOS has built-in API key management (org-scoped) — deferred, keeping custom api_keys table
-7. TODO at implementation: verify exact method for resolving user from access_token in /auth/exchange
-   (may need JWT decode → get_user(user_id) instead of direct get_user(access_token))
+6. RESOLVED: Access token is JWT — decode sub claim → call get_user(user_id=...) for full user object
+7. NOTED: WorkOS built-in API key management deferred (org-scoped, keeping custom api_keys table)
+
+Pre-production TODO:
+- Add JWT signature verification against WorkOS JWKS (https://<authkit-domain>/oauth2/jwks)
+- Register redirect URIs in WorkOS Dashboard

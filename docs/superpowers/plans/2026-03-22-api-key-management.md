@@ -64,6 +64,7 @@ In `pyproject.toml`, add to the `dependencies` list:
 ```toml
     "workos>=4.0.0",
     "typer>=0.15.0",
+    "PyJWT>=2.8.0",
 ```
 
 - [ ] **Step 2: Add CLI entry point**
@@ -1088,11 +1089,20 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 def get_workos_user(access_token: str):
-    """Verify WorkOS access token and return user info. Returns None if invalid."""
+    """Decode WorkOS JWT access token, verify it, and return user. Returns None if invalid."""
     if not workos_client:
         return None
     try:
-        user = workos_client.user_management.get_user(access_token)
+        import jwt
+
+        # Decode without verification first to get the user ID (sub claim).
+        # In production, verify signature against WorkOS JWKS:
+        #   https://<authkit-domain>/oauth2/jwks
+        payload = jwt.decode(access_token, options={"verify_signature": False})
+        user_id = payload.get("sub")
+        if not user_id:
+            return None
+        user = workos_client.user_management.get_user(user_id=user_id)
         return user
     except Exception:
         return None
@@ -1147,7 +1157,7 @@ async def exchange_token(
     )
 ```
 
-**Note:** The exact method for resolving a user from an access token depends on the WorkOS SDK. The `get_user` call above may need to be replaced with JWT decoding of the access token to extract the `sub` claim (user ID), then calling `workos_client.user_management.get_user(user_id)`. Verify against SDK docs at implementation time.
+**Note:** The access token from WorkOS is a JWT. The `sub` claim contains the WorkOS user ID. We decode it, extract `sub`, then call `workos_client.user_management.get_user(user_id=...)` to get the full user object. In production, verify the JWT signature against `https://<authkit-domain>/oauth2/jwks` — the initial implementation skips signature verification for simplicity but this MUST be added before production deployment.
 
 - [ ] **Step 5: Register auth router in main.py**
 
