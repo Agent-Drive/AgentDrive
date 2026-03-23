@@ -10,7 +10,7 @@ from agentdrive.cli.credentials import delete_credentials, load_credentials, sav
 app = typer.Typer(name="agentdrive", help="Agent Drive CLI")
 
 DEFAULT_API_URL = "http://localhost:8080"
-WORKOS_AUTHKIT_DOMAIN = os.environ.get("WORKOS_AUTHKIT_DOMAIN", "")
+WORKOS_API_BASE = "https://api.workos.com"
 WORKOS_CLIENT_ID = os.environ.get("WORKOS_CLIENT_ID", "")
 
 
@@ -21,17 +21,15 @@ def _get_api_url() -> str:
 @app.command()
 def login():
     """Authenticate with Agent Drive via browser login (WorkOS device flow)."""
-    if not WORKOS_AUTHKIT_DOMAIN or not WORKOS_CLIENT_ID:
-        typer.echo("Error: WORKOS_AUTHKIT_DOMAIN and WORKOS_CLIENT_ID must be set.", err=True)
+    if not WORKOS_CLIENT_ID:
+        typer.echo("Error: WORKOS_CLIENT_ID must be set.", err=True)
         raise typer.Exit(1)
-
-    authkit_base = f"https://{WORKOS_AUTHKIT_DOMAIN}"
 
     typer.echo("Starting login...")
     with httpx.Client(timeout=30) as client:
         resp = client.post(
-            f"{authkit_base}/authorize/device",
-            data={"client_id": WORKOS_CLIENT_ID},
+            f"{WORKOS_API_BASE}/user_management/authorize/device",
+            json={"client_id": WORKOS_CLIENT_ID},
         )
         if resp.status_code != 200:
             typer.echo(f"Error starting device auth: {resp.text}", err=True)
@@ -53,8 +51,8 @@ def login():
         for _ in range(60):
             time.sleep(interval)
             resp = client.post(
-                f"{authkit_base}/token",
-                data={
+                f"{WORKOS_API_BASE}/user_management/authenticate",
+                json={
                     "client_id": WORKOS_CLIENT_ID,
                     "device_code": device_code,
                     "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
