@@ -54,7 +54,9 @@ jobs:
 
           # Install dependencies and run migrations
           pip install --quiet uv
-          uv pip install --system -e ".[migrations]"
+          uv venv .venv
+          . .venv/bin/activate
+          uv pip install -e ".[migrations]"
           DATABASE_URL="${{ secrets.MIGRATION_DATABASE_URL }}" alembic upgrade head
 
           # Cleanup
