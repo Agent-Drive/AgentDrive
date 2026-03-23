@@ -24,7 +24,10 @@ async def test_list_tools():
     assert "delete_file" in tool_names
     assert "delete_collection" in tool_names
     assert "get_chunk" in tool_names
-    assert len(tool_names) == 9
+    assert "create_api_key" in tool_names
+    assert "list_api_keys" in tool_names
+    assert "revoke_api_key" in tool_names
+    assert len(tool_names) == 12
 
 
 @pytest.mark.asyncio

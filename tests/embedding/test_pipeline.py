@@ -4,12 +4,11 @@ import pytest_asyncio
 from agentdrive.models.chunk import Chunk, ParentChunk
 from agentdrive.models.file import File
 from agentdrive.models.tenant import Tenant
-from agentdrive.services.auth import hash_api_key
 
 
 @pytest_asyncio.fixture
 async def file_with_chunks(db_session):
-    tenant = Tenant(name="Test", api_key_hash=hash_api_key("sk-test"))
+    tenant = Tenant(name="Test")
     db_session.add(tenant)
     await db_session.commit()
     file = File(

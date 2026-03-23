@@ -63,6 +63,21 @@ async def db_engine():
         await conn.execute(sa_text(
             "ALTER TABLE chunk_aliases ADD COLUMN IF NOT EXISTS embedding halfvec(256)"
         ))
+        await conn.execute(sa_text(
+            "CREATE TABLE IF NOT EXISTS api_keys ("
+            "id uuid PRIMARY KEY DEFAULT gen_random_uuid(), "
+            "tenant_id uuid REFERENCES tenants(id), "
+            "key_prefix text NOT NULL, "
+            "key_hash text NOT NULL, "
+            "name text, "
+            "created_at timestamptz DEFAULT now(), "
+            "expires_at timestamptz, "
+            "revoked_at timestamptz, "
+            "last_used timestamptz)"
+        ))
+        await conn.execute(sa_text(
+            "CREATE INDEX IF NOT EXISTS idx_api_keys_prefix ON api_keys(key_prefix)"
+        ))
     yield engine
     await engine.dispose()
 
