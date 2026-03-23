@@ -28,7 +28,7 @@ spec:
             - name: GCS_BUCKET
               value: agentdrive-files
             - name: WORKOS_CLIENT_ID
-              value: client_PLACEHOLDER
+              value: client_01KMCVC3V2MQKW318327ZY1ZAR
             - name: AUTO_PROVISION_TENANTS
               value: "false"
             - name: DATABASE_URL
