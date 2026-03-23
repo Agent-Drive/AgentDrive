@@ -59,7 +59,7 @@ install.sh (shell)
                 │         POST /auth/exchange → sk-ad- key
                 │         Save to ~/.agentdrive/credentials
                 │
-                ├─ 2. Read ~/.claude/settings.json (or create)
+                ├─ 2. Read ~/.claude.json (or create)
                 │
                 ├─ 3. Merge MCP config (preserve existing servers)
                 │
@@ -196,9 +196,26 @@ Same flow as `agentdrive login`:
 
 ### Step 2: Write MCP Config
 
-Read `~/.claude/settings.json`, merge the `agent-drive` entry, write back. The MCP config adapts based on how the package was installed:
+Use `claude mcp add` CLI if available (safest — handles edge cases, concurrent writes, schema validation). Fall back to direct JSON manipulation of `~/.claude.json` if `claude` CLI is not found.
 
-**If installed via `uvx`:**
+**Primary: `claude mcp add`**
+```bash
+# uvx install path:
+claude mcp add agent-drive --scope user -- uvx agentdrive-mcp serve
+# pipx/pip install path:
+claude mcp add agent-drive --scope user -- agentdrive-mcp serve
+```
+
+Then set the env var:
+```bash
+claude mcp add agent-drive --scope user -e AGENT_DRIVE_URL=https://api.agentdrive.so -- uvx agentdrive-mcp serve
+```
+
+**Fallback: direct JSON merge of `~/.claude.json`**
+
+The MCP config adapts based on how the package was installed:
+
+If installed via `uvx`:
 ```json
 {
   "mcpServers": {
@@ -213,7 +230,7 @@ Read `~/.claude/settings.json`, merge the `agent-drive` entry, write back. The M
 }
 ```
 
-**If installed via `pipx` or `pip`:**
+If installed via `pipx` or `pip`:
 ```json
 {
   "mcpServers": {
@@ -232,7 +249,7 @@ The `install` command receives the install method (passed as `--method uvx|pipx|
 
 **No `AGENT_DRIVE_API_KEY` in the config** — the MCP server reads from `~/.agentdrive/credentials` automatically.
 
-**Merge behavior:** If `~/.claude/settings.json` exists, read it, add/overwrite only the `agent-drive` key under `mcpServers`, preserve everything else. If file doesn't exist, create it.
+**Merge behavior (fallback only):** If `~/.claude.json` exists, read it, add/overwrite only the `agent-drive` key under `mcpServers`, preserve everything else. If file doesn't exist, create it with just the `mcpServers` key.
 
 ### Step 3: Validate
 
@@ -258,7 +275,7 @@ Permissions: `0o600`
 
 ### MCP Config
 
-Path: `~/.claude/settings.json`
+Path: `~/.claude.json`
 Key: `mcpServers.agent-drive`
 
 ## Idempotency
