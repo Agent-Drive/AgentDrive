@@ -80,6 +80,12 @@ async def process_file(file_id: uuid.UUID, session: AsyncSession) -> None:
                 )
                 session.add(alias_record)
 
+        if chunk_index == 0:
+            logger.warning(f"File {file_id} produced 0 chunks — marking as failed")
+            file.status = FileStatus.FAILED
+            await session.commit()
+            return
+
         file.status = FileStatus.READY
         await embed_file_chunks(file.id, session)
         await embed_file_aliases(file.id, session)

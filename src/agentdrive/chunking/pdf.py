@@ -24,10 +24,11 @@ class PdfChunker(BaseChunker):
             temp_path = f.name
         try:
             converter = DocumentConverter()
-            results = converter.convert(temp_path)
-            for doc in results:
-                markdown = doc.document.export_to_markdown()
-                return self._markdown_chunker.chunk(markdown, filename, metadata)
+            result = converter.convert(temp_path)
+            markdown = result.document.export_to_markdown()
+            if not markdown or not markdown.strip():
+                return []
+            return self._markdown_chunker.chunk(markdown, filename, metadata)
         except Exception:
             return []
         finally:
