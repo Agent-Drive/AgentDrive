@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 
 from agentdrive.config import settings
-from agentdrive.routers import api_keys, collections, files, search
+from agentdrive.routers import api_keys, auth, collections, files, search
 
 
 def create_app() -> FastAPI:
@@ -12,6 +12,7 @@ def create_app() -> FastAPI:
         description="Agent-native file intelligence layer",
     )
     app.include_router(api_keys.router)
+    app.include_router(auth.router)
     app.include_router(collections.router)
     app.include_router(files.router)
     app.include_router(search.router)
