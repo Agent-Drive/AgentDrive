@@ -19,7 +19,7 @@ Deploy the Agent Drive FastAPI application to Google Cloud Run with Cloud SQL (P
 │  │ Artifact     │    │ Cloud Run                    │    │
 │  │ Registry     │───▶│ agentdrive-api               │    │
 │  │ (Docker)     │    │ - min 0, max 3 instances     │    │
-│  └──────────────┘    │ - 1 vCPU, 512MB RAM          │    │
+│  └──────────────┘    │ - 1 vCPU, 2Gi RAM            │    │
 │                      │ - port 8080                   │    │
 │                      │ - concurrency: 80             │    │
 │                      └──────┬──────┬────────────┘    │    │
@@ -70,7 +70,7 @@ DNS (Namecheap):
 - **Service name:** `agentdrive-api`
 - **Image:** `us-central1-docker.pkg.dev/agent-drive-491013/agentdrive/api:<sha>`
 - **Scaling:** 0–3 instances (scales to zero when idle)
-- **Resources:** 1 vCPU, 512MB RAM
+- **Resources:** 1 vCPU, 2Gi RAM (docling loads ML models at runtime)
 - **Concurrency:** 80 requests per instance
 - **Startup probe:** `GET /health`, 5s initial delay, 5s period, 3 failure threshold
 - **Ingress:** All traffic (public API, auth handled by application)
@@ -79,7 +79,7 @@ DNS (Namecheap):
 ### Secret Manager
 
 ```
-agentdrive-database-url        # postgresql+asyncpg://user:pass@/agentdrive?host=/cloudsql/...
+agentdrive-database-url        # postgresql+asyncpg://user:pass@/agentdrive?host=/cloudsql/agent-drive-491013:us-central1:agentdrive-db
 agentdrive-voyage-api-key      # Voyage AI embedding
 agentdrive-cohere-api-key      # Cohere reranking
 agentdrive-anthropic-api-key   # Haiku enrichment
@@ -92,6 +92,7 @@ agentdrive-workos-api-key      # WorkOS authentication
 ENVIRONMENT=production
 GCS_BUCKET=agentdrive-files
 WORKOS_CLIENT_ID=client_...
+AUTO_PROVISION_TENANTS=false
 ```
 
 ### Cloud Run Service Config
@@ -122,7 +123,7 @@ spec:
           resources:
             limits:
               cpu: "1"
-              memory: 512Mi
+              memory: 2Gi
           env:
             - name: ENVIRONMENT
               value: production
@@ -130,6 +131,8 @@ spec:
               value: agentdrive-files
             - name: WORKOS_CLIENT_ID
               value: client_PLACEHOLDER
+            - name: AUTO_PROVISION_TENANTS
+              value: "false"
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
@@ -162,9 +165,14 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 5
             failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 30
 ```
 
-GitHub Actions replaces the `image` tag with the actual commit SHA before deploying.
+GitHub Actions replaces the `image: ...api:latest` placeholder with the actual commit SHA before deploying (e.g., `api:abc1234`).
 
 ## CI/CD Pipeline
 
@@ -191,7 +199,17 @@ Workload Identity Federation — GitHub Actions authenticates to GCP without a s
 
 ### Migrations
 
-Run from GitHub Actions runner using Cloud SQL Auth Proxy as a sidecar. Alembic connects via the proxy, runs `upgrade head`, then the new image deploys.
+Alembic uses a **sync** psycopg2 driver (not asyncpg). The project needs `psycopg2-binary` added as an optional dependency: `[project.optional-dependencies] migrations = ["psycopg2-binary"]`.
+
+In CI, migrations run via Cloud SQL Auth Proxy as a **background process** on the runner:
+
+1. Start `cloud-sql-proxy agent-drive-491013:us-central1:agentdrive-db --port 5432 &`
+2. Run `DATABASE_URL=postgresql://user:pass@localhost:5432/agentdrive alembic upgrade head`
+   (TCP connection via proxy to localhost — different format than the Cloud Run Unix socket URL)
+3. Kill proxy
+4. Deploy new image
+
+The migration `DATABASE_URL` is stored as a **GitHub Actions secret** (`MIGRATION_DATABASE_URL`), not read from GCP Secret Manager. This avoids granting `github-deployer` access to Secret Manager.
 
 ### Artifact Registry
 
@@ -221,6 +239,8 @@ GET https://api.agentdrive.so/install.sh
 
 Implementation: a single route in `main.py` that returns a `PlainTextResponse` with the script contents. The script is baked into the Docker image since it's in the repo.
 
+**Note:** The Dockerfile must be updated to `COPY scripts/ scripts/` so the file is available in the container.
+
 ## IAM & Service Accounts
 
 | Service Account | Purpose | Roles |
@@ -232,12 +252,12 @@ Implementation: a single route in `main.py` that returns a `PlainTextResponse` w
 
 | Resource | Monthly Cost |
 |----------|-------------|
-| Cloud SQL `db-f1-micro` | ~$7–10 |
+| Cloud SQL `db-f1-micro` + 10GB SSD | ~$10–12 |
 | Cloud Run (scales to zero) | ~$0–5 (usage-based) |
 | Artifact Registry | ~$0.10/GB |
 | Secret Manager | ~$0 (5 secrets, low access) |
 | GCS | ~$0–2 (usage-based) |
-| **Total** | **~$10–15/mo** |
+| **Total** | **~$12–20/mo** |
 
 ## Out of Scope
 
@@ -247,3 +267,10 @@ Implementation: a single route in `main.py` that returns a `PlainTextResponse` w
 - Monitoring/alerting dashboards
 - CDN / Cloudflare in front of API
 - Vanity domain for install script (`agentdrive.dev`)
+- `.dockerignore` optimization (add if build context becomes slow)
+
+## Notes
+
+- **Two DATABASE_URL formats:** Cloud Run uses Unix socket (`?host=/cloudsql/...`), CI migrations use TCP (`@localhost:5432`). These are different secret values.
+- **Cloud Run body size limit:** Default 32MB matches `MAX_UPLOAD_BYTES` in config.py. If upload limit changes, Cloud Run config must be updated too.
+- **Single uvicorn worker:** Sufficient for async I/O workload. If docling PDF processing creates CPU bottlenecks, consider `--workers 2`.
