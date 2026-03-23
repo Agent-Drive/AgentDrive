@@ -18,7 +18,7 @@ async def tenant_with_new_key(db_session: AsyncSession):
     raw_key, prefix, key_hash = generate_api_key()
     api_key = ApiKey(tenant_id=tenant.id, key_prefix=prefix, key_hash=key_hash, name="test")
     db_session.add(api_key)
-    await db_session.flush()
+    await db_session.commit()
     return tenant, raw_key
 
 
@@ -29,7 +29,7 @@ async def tenant_with_legacy_key(db_session: AsyncSession):
     await db_session.flush()
     api_key = ApiKey(tenant_id=tenant.id, key_prefix="legacy__", key_hash=hash_api_key(LEGACY_KEY), name="migrated")
     db_session.add(api_key)
-    await db_session.flush()
+    await db_session.commit()
     return tenant
 
 

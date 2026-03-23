@@ -68,7 +68,7 @@ async def exchange_token(
         if not settings.auto_provision_tenants:
             raise HTTPException(status_code=403, detail="Auto-provisioning is disabled. Contact your admin.")
         name = f"{user.first_name or ''} {user.last_name or ''}".strip() or user.email
-        tenant = Tenant(name=name, api_key_hash="unused", workos_user_id=user.id)
+        tenant = Tenant(name=name, workos_user_id=user.id)
         session.add(tenant)
         await session.flush()
 
