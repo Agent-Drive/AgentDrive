@@ -1,0 +1,73 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: agentdrive-api
+  annotations:
+    run.googleapis.com/ingress: all
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/cloudsql-instances: agent-drive-491013:us-central1:agentdrive-db
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "3"
+    spec:
+      containerConcurrency: 80
+      serviceAccountName: agentdrive-api@agent-drive-491013.iam.gserviceaccount.com
+      containers:
+        - image: us-central1-docker.pkg.dev/agent-drive-491013/agentdrive/api:latest
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              cpu: "1"
+              memory: 2Gi
+          env:
+            - name: ENVIRONMENT
+              value: production
+            - name: GCS_BUCKET
+              value: agentdrive-files
+            - name: WORKOS_CLIENT_ID
+              value: client_PLACEHOLDER
+            - name: AUTO_PROVISION_TENANTS
+              value: "false"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  key: latest
+                  name: agentdrive-database-url
+            - name: VOYAGE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: latest
+                  name: agentdrive-voyage-api-key
+            - name: COHERE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: latest
+                  name: agentdrive-cohere-api-key
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: latest
+                  name: agentdrive-anthropic-api-key
+            - name: WORKOS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: latest
+                  name: agentdrive-workos-api-key
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
