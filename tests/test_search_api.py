@@ -1,16 +1,21 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 import pytest_asyncio
+from agentdrive.models.api_key import ApiKey
 from agentdrive.models.tenant import Tenant
-from agentdrive.services.auth import hash_api_key
+from agentdrive.services.auth import hash_api_key, parse_key_prefix
 
-TEST_API_KEY = "sk-test-key-search"
+TEST_API_KEY = "sk-ad-testpre1searchkeyforunittesting"
 
 
 @pytest_asyncio.fixture
 async def authed_client(client, db_session):
-    tenant = Tenant(name="Test", api_key_hash=hash_api_key(TEST_API_KEY))
+    tenant = Tenant(name="Test", api_key_hash="unused")
     db_session.add(tenant)
+    await db_session.flush()
+    prefix = parse_key_prefix(TEST_API_KEY)
+    api_key = ApiKey(tenant_id=tenant.id, key_prefix=prefix, key_hash=hash_api_key(TEST_API_KEY), name="test")
+    db_session.add(api_key)
     await db_session.commit()
     client.headers["Authorization"] = f"Bearer {TEST_API_KEY}"
     return client
