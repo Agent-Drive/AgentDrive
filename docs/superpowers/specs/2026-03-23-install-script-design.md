@@ -109,7 +109,7 @@ No torch, docling, SQLAlchemy, voyage, cohere, or any server-side deps.
 [project]
 name = "agentdrive-mcp"
 version = "0.1.0"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 dependencies = [
     "mcp>=1.0.0",
     "httpx>=0.28.0",
@@ -147,23 +147,40 @@ packages = ["src/agentdrive_mcp"]
 #!/bin/sh
 set -e
 
+# Ensure stdin is from terminal (not the pipe)
+exec < /dev/tty
+
 echo "Installing Agent Drive MCP..."
 
-# Detect package manager
+INSTALL_METHOD=""
+
+# Detect package manager: uvx > pipx > pip --user
 if command -v uvx >/dev/null 2>&1; then
     echo "  Detected uv"
-    uvx agentdrive-mcp install
+    INSTALL_METHOD="uvx"
+    uvx --force-reinstall agentdrive-mcp install --method uvx
+elif command -v pipx >/dev/null 2>&1; then
+    echo "  Detected pipx"
+    INSTALL_METHOD="pipx"
+    pipx install --force agentdrive-mcp
+    agentdrive-mcp install --method pipx
 elif command -v pip >/dev/null 2>&1; then
     echo "  Detected pip"
-    pip install --quiet agentdrive-mcp
-    agentdrive-mcp install
+    INSTALL_METHOD="pip"
+    pip install --user --quiet agentdrive-mcp
+    agentdrive-mcp install --method pip
 else
-    echo "Error: uv or pip required. Install uv: https://docs.astral.sh/uv/"
+    echo "Error: uv, pipx, or pip required. Install uv: https://docs.astral.sh/uv/"
     exit 1
 fi
 ```
 
-The `uvx` path is preferred — it installs and runs in one shot with no global pollution.
+Notes:
+- `exec < /dev/tty` reconnects stdin to the terminal so the login flow's `input()` works when piped via `curl | sh`.
+- `uvx --force-reinstall` ensures re-runs pick up the latest version from PyPI.
+- `pipx` is preferred over raw `pip` to avoid PEP 668 externally-managed-environment errors on modern macOS/Linux.
+- `pip --user` as last resort avoids system Python permission issues.
+- The `uvx` path is preferred — it installs and runs in one shot with no global pollution.
 
 ## Python Installer (`agentdrive-mcp install`)
 
@@ -179,8 +196,9 @@ Same flow as `agentdrive login`:
 
 ### Step 2: Write MCP Config
 
-Read `~/.claude/settings.json`, merge the `agent-drive` entry, write back:
+Read `~/.claude/settings.json`, merge the `agent-drive` entry, write back. The MCP config adapts based on how the package was installed:
 
+**If installed via `uvx`:**
 ```json
 {
   "mcpServers": {
@@ -194,6 +212,23 @@ Read `~/.claude/settings.json`, merge the `agent-drive` entry, write back:
   }
 }
 ```
+
+**If installed via `pipx` or `pip`:**
+```json
+{
+  "mcpServers": {
+    "agent-drive": {
+      "command": "agentdrive-mcp",
+      "args": ["serve"],
+      "env": {
+        "AGENT_DRIVE_URL": "https://api.agentdrive.so"
+      }
+    }
+  }
+}
+```
+
+The `install` command receives the install method (passed as `--method uvx|pipx|pip` from the shell script) and writes the appropriate config.
 
 **No `AGENT_DRIVE_API_KEY` in the config** — the MCP server reads from `~/.agentdrive/credentials` automatically.
 
