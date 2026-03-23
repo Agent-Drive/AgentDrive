@@ -4,7 +4,7 @@
 
 **Goal:** Replace manual SQL-based API key creation with self-service WorkOS device auth + API key CRUD, switching auth from O(n) bcrypt scan to O(1) prefix lookup.
 
-**Architecture:** New `api_keys` table with prefix-indexed lookup. WorkOS device auth flow for human login via CLI. Existing `tenants.api_key_hash` migrated to `api_keys` with legacy fallback. CLI stores credentials at `~/.agentdrive/credentials`, MCP server reads from there.
+**Architecture:** New `api_keys` table with prefix-indexed lookup. CLI authenticates directly with WorkOS via native device flow (RFC 8628), then exchanges the WorkOS access token for an `sk-ad-` key via our backend's `POST /auth/exchange`. Existing `tenants.api_key_hash` migrated to `api_keys` with legacy fallback. CLI stores credentials at `~/.agentdrive/credentials`, MCP server reads from there.
 
 **Tech Stack:** FastAPI, SQLAlchemy 2.0, Alembic, bcrypt, WorkOS Python SDK, Typer (CLI), httpx
 
@@ -26,7 +26,7 @@ src/agentdrive/
 │   └── api_keys.py              ← CREATE (request/response schemas)
 ├── routers/
 │   ├── api_keys.py              ← CREATE (CRUD endpoints)
-│   └── auth.py                  ← CREATE (device flow endpoints)
+│   └── auth.py                  ← CREATE (token exchange endpoint)
 ├── dependencies.py              ← MODIFY (O(1) prefix auth + legacy fallback)
 ├── config.py                    ← MODIFY (add WorkOS + auto-provision settings)
 ├── main.py                      ← MODIFY (register new routers)
@@ -911,7 +911,7 @@ git commit -m "feat: O(1) prefix-based auth with legacy fallback"
 
 ---
 
-### Task 7: Config + WorkOS auth router
+### Task 7: Config + WorkOS token exchange endpoint
 
 **Files:**
 - Modify: `src/agentdrive/config.py`
@@ -919,7 +919,9 @@ git commit -m "feat: O(1) prefix-based auth with legacy fallback"
 - Create: `tests/test_auth_endpoints.py`
 - Modify: `src/agentdrive/main.py`
 
-- [ ] **Step 1: Update config.py with WorkOS settings and api_base_url**
+The CLI handles the WorkOS device flow directly (CLI ↔ WorkOS). Our backend only has one endpoint: `POST /auth/exchange` — accepts a WorkOS access token, resolves the user, finds/creates a tenant, and returns an `sk-ad-` API key.
+
+- [ ] **Step 1: Update config.py with WorkOS settings**
 
 Add to the `Settings` class in `src/agentdrive/config.py`:
 
@@ -927,15 +929,14 @@ Add to the `Settings` class in `src/agentdrive/config.py`:
     workos_api_key: str = ""
     workos_client_id: str = ""
     auto_provision_tenants: bool = True
-    api_base_url: str = "http://localhost:8080"
 ```
 
-- [ ] **Step 2: Write tests for device auth endpoints**
+- [ ] **Step 2: Write tests for token exchange endpoint**
 
 Create `tests/test_auth_endpoints.py`:
 
 ```python
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 import pytest_asyncio
@@ -947,40 +948,20 @@ from agentdrive.models.tenant import Tenant
 
 
 @pytest.mark.asyncio
-async def test_device_auth_start(client):
-    """POST /auth/device should return device_code, user_code, verification_url."""
-    with patch("agentdrive.routers.auth.workos_client") as mock_workos:
-        mock_workos.user_management.create_auth_url.return_value = (
-            "https://auth.workos.com/device?code=ABCD-1234"
-        )
-        response = await client.post("/auth/device")
-    assert response.status_code == 200
-    data = response.json()
-    assert "device_code" in data
-    assert "user_code" in data
-    assert "verification_url" in data
-
-
-@pytest.mark.asyncio
-async def test_device_auth_token_pending(client):
-    """POST /auth/token with pending device code should return pending status."""
-    response = await client.post("/auth/token", json={"device_code": "not-ready"})
-    assert response.status_code == 202
-    assert response.json()["status"] == "pending"
-
-
-@pytest.mark.asyncio
-async def test_device_auth_token_creates_tenant(client, db_session: AsyncSession):
-    """POST /auth/token with valid code should create tenant + return API key."""
+async def test_exchange_creates_tenant(client, db_session: AsyncSession):
+    """POST /auth/exchange with valid token should create tenant + return API key."""
     mock_user = MagicMock()
     mock_user.id = "workos-user-123"
     mock_user.email = "test@example.com"
     mock_user.first_name = "Test"
     mock_user.last_name = "User"
 
-    with patch("agentdrive.routers.auth.verify_device_code") as mock_verify:
-        mock_verify.return_value = mock_user
-        response = await client.post("/auth/token", json={"device_code": "valid-code"})
+    with patch("agentdrive.routers.auth.get_workos_user") as mock_get_user:
+        mock_get_user.return_value = mock_user
+        response = await client.post(
+            "/auth/exchange",
+            json={"access_token": "fake-workos-access-token"},
+        )
 
     assert response.status_code == 200
     data = response.json()
@@ -997,8 +978,8 @@ async def test_device_auth_token_creates_tenant(client, db_session: AsyncSession
 
 
 @pytest.mark.asyncio
-async def test_device_auth_token_existing_tenant(client, db_session: AsyncSession):
-    """POST /auth/token for existing user should reuse tenant, create new key."""
+async def test_exchange_existing_tenant(client, db_session: AsyncSession):
+    """POST /auth/exchange for existing user should reuse tenant, create new key."""
     tenant = Tenant(
         name="Existing User",
         api_key_hash="unused",
@@ -1014,13 +995,52 @@ async def test_device_auth_token_existing_tenant(client, db_session: AsyncSessio
     mock_user.first_name = "Existing"
     mock_user.last_name = "User"
 
-    with patch("agentdrive.routers.auth.verify_device_code") as mock_verify:
-        mock_verify.return_value = mock_user
-        response = await client.post("/auth/token", json={"device_code": "valid-code"})
+    with patch("agentdrive.routers.auth.get_workos_user") as mock_get_user:
+        mock_get_user.return_value = mock_user
+        response = await client.post(
+            "/auth/exchange",
+            json={"access_token": "fake-workos-access-token"},
+        )
 
     assert response.status_code == 200
     data = response.json()
     assert data["tenant_id"] == str(tenant.id)
+
+
+@pytest.mark.asyncio
+async def test_exchange_invalid_token(client):
+    """POST /auth/exchange with invalid token should return 401."""
+    with patch("agentdrive.routers.auth.get_workos_user") as mock_get_user:
+        mock_get_user.return_value = None
+        response = await client.post(
+            "/auth/exchange",
+            json={"access_token": "invalid-token"},
+        )
+
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_exchange_auto_provision_disabled(client, db_session: AsyncSession):
+    """POST /auth/exchange with auto-provision off should reject new users."""
+    mock_user = MagicMock()
+    mock_user.id = "workos-user-new"
+    mock_user.email = "new@example.com"
+    mock_user.first_name = "New"
+    mock_user.last_name = "User"
+
+    with patch("agentdrive.routers.auth.get_workos_user") as mock_get_user, \
+         patch("agentdrive.routers.auth.settings") as mock_settings:
+        mock_get_user.return_value = mock_user
+        mock_settings.auto_provision_tenants = False
+        mock_settings.workos_api_key = "fake"
+        mock_settings.workos_client_id = "fake"
+        response = await client.post(
+            "/auth/exchange",
+            json={"access_token": "fake-workos-access-token"},
+        )
+
+    assert response.status_code == 403
 ```
 
 - [ ] **Step 3: Run tests to verify they fail**
@@ -1033,10 +1053,6 @@ Expected: FAIL — routes don't exist
 Create `src/agentdrive/routers/auth.py`:
 
 ```python
-import secrets
-import string
-from datetime import datetime, timezone
-
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -1057,102 +1073,40 @@ if settings.workos_api_key and settings.workos_client_id:
         client_id=settings.workos_client_id,
     )
 
-# In-memory store for device codes (replace with Redis for production multi-instance)
-_device_codes: dict[str, dict] = {}
+
+class ExchangeRequest(BaseModel):
+    access_token: str
 
 
-class DeviceCodeResponse(BaseModel):
-    device_code: str
-    user_code: str
-    verification_url: str
-
-
-class TokenRequest(BaseModel):
-    device_code: str
-
-
-class TokenResponse(BaseModel):
+class ExchangeResponse(BaseModel):
     api_key: str
     email: str
     tenant_id: str
 
 
-class PendingResponse(BaseModel):
-    status: str = "pending"
-
-
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-def _generate_device_code() -> tuple[str, str]:
-    """Generate a device_code (internal) and user_code (displayed to user)."""
-    device_code = secrets.token_urlsafe(32)
-    alphabet = string.ascii_uppercase + string.digits
-    user_code = "".join(secrets.choice(alphabet) for _ in range(4)) + "-" + "".join(
-        secrets.choice(alphabet) for _ in range(4)
-    )
-    return device_code, user_code
-
-
-async def verify_device_code(device_code: str):
-    """Verify device code with WorkOS. Returns user object or None."""
-    entry = _device_codes.get(device_code)
-    if not entry or not entry.get("user"):
+def get_workos_user(access_token: str):
+    """Verify WorkOS access token and return user info. Returns None if invalid."""
+    if not workos_client:
         return None
-    return entry["user"]
+    try:
+        user = workos_client.user_management.get_user(access_token)
+        return user
+    except Exception:
+        return None
 
 
-@router.post("/device", response_model=DeviceCodeResponse)
-async def start_device_auth():
-    if not workos_client:
-        raise HTTPException(status_code=503, detail="WorkOS not configured")
-
-    device_code, user_code = _generate_device_code()
-    auth_url = workos_client.user_management.create_auth_url(
-        provider="authkit",
-        redirect_uri=f"{settings.api_base_url}/auth/callback",
-        state=device_code,
-    )
-
-    _device_codes[device_code] = {
-        "user_code": user_code,
-        "user": None,
-        "created_at": datetime.now(timezone.utc),
-    }
-
-    return DeviceCodeResponse(
-        device_code=device_code,
-        user_code=user_code,
-        verification_url=auth_url,
-    )
-
-
-@router.get("/callback")
-async def auth_callback(code: str, state: str):
-    """WorkOS redirects here after user authenticates. Populates the device code entry."""
-    if not workos_client:
-        raise HTTPException(status_code=503, detail="WorkOS not configured")
-
-    if state not in _device_codes:
-        raise HTTPException(status_code=400, detail="Invalid or expired device code")
-
-    # Exchange authorization code for user info
-    auth_response = workos_client.user_management.authenticate_with_code(
-        code=code,
-    )
-    _device_codes[state]["user"] = auth_response.user
-    return {"status": "ok", "message": "You can close this window and return to the CLI."}
-
-
-@router.post("/token")
-async def poll_for_token(
-    body: TokenRequest,
+@router.post("/exchange", response_model=ExchangeResponse)
+async def exchange_token(
+    body: ExchangeRequest,
     session: AsyncSession = Depends(get_session),
 ):
-    user = await verify_device_code(body.device_code)
+    """Exchange a WorkOS access token for an Agent Drive sk-ad- API key."""
+    user = get_workos_user(body.access_token)
     if user is None:
-        from fastapi.responses import JSONResponse
-        return JSONResponse(status_code=202, content={"status": "pending"})
+        raise HTTPException(status_code=401, detail="Invalid or expired WorkOS token")
 
     # Find or create tenant
     result = await session.execute(
@@ -1186,15 +1140,14 @@ async def poll_for_token(
     session.add(api_key)
     await session.commit()
 
-    # Clean up device code
-    _device_codes.pop(body.device_code, None)
-
-    return TokenResponse(
+    return ExchangeResponse(
         api_key=raw_key,
         email=user.email,
         tenant_id=str(tenant.id),
     )
 ```
+
+**Note:** The exact method for resolving a user from an access token depends on the WorkOS SDK. The `get_user` call above may need to be replaced with JWT decoding of the access token to extract the `sub` claim (user ID), then calling `workos_client.user_management.get_user(user_id)`. Verify against SDK docs at implementation time.
 
 - [ ] **Step 5: Register auth router in main.py**
 
@@ -1219,7 +1172,7 @@ Expected: PASS (all 4 tests)
 
 ```bash
 git add src/agentdrive/config.py src/agentdrive/routers/auth.py src/agentdrive/main.py tests/test_auth_endpoints.py
-git commit -m "feat: WorkOS device auth flow endpoints"
+git commit -m "feat: WorkOS token exchange endpoint (POST /auth/exchange)"
 ```
 
 ---
@@ -1348,6 +1301,8 @@ Expected: PASS (all 4 tests)
 Create `src/agentdrive/cli/main.py`:
 
 ```python
+import os
+import time
 import webbrowser
 
 import httpx
@@ -1358,56 +1313,92 @@ from agentdrive.cli.credentials import delete_credentials, load_credentials, sav
 app = typer.Typer(name="agentdrive", help="Agent Drive CLI")
 
 DEFAULT_API_URL = "http://localhost:8080"
+# WorkOS AuthKit domain — set via env or configure per environment
+WORKOS_AUTHKIT_DOMAIN = os.environ.get("WORKOS_AUTHKIT_DOMAIN", "")
+WORKOS_CLIENT_ID = os.environ.get("WORKOS_CLIENT_ID", "")
 
 
 def _get_api_url() -> str:
-    import os
     return os.environ.get("AGENT_DRIVE_URL", DEFAULT_API_URL)
 
 
 @app.command()
 def login():
-    """Authenticate with Agent Drive via browser login."""
-    api_url = _get_api_url()
+    """Authenticate with Agent Drive via browser login (WorkOS device flow)."""
+    if not WORKOS_AUTHKIT_DOMAIN or not WORKOS_CLIENT_ID:
+        typer.echo("Error: WORKOS_AUTHKIT_DOMAIN and WORKOS_CLIENT_ID must be set.", err=True)
+        raise typer.Exit(1)
 
-    # Step 1: Start device auth
+    authkit_base = f"https://{WORKOS_AUTHKIT_DOMAIN}"
+
+    # Step 1: Request device authorization from WorkOS directly
     typer.echo("Starting login...")
-    with httpx.Client(base_url=api_url, timeout=30) as client:
-        resp = client.post("/auth/device")
+    with httpx.Client(timeout=30) as client:
+        resp = client.post(
+            f"{authkit_base}/authorize/device",
+            data={"client_id": WORKOS_CLIENT_ID},
+        )
         if resp.status_code != 200:
-            typer.echo(f"Error: {resp.text}", err=True)
+            typer.echo(f"Error starting device auth: {resp.text}", err=True)
             raise typer.Exit(1)
         data = resp.json()
 
     device_code = data["device_code"]
     user_code = data["user_code"]
-    verification_url = data["verification_url"]
+    verification_uri = data.get("verification_uri_complete", data["verification_uri"])
+    interval = data.get("interval", 5)
 
     typer.echo(f"\n  Your code: {user_code}")
-    typer.echo(f"  Press Enter to open browser, or visit: {verification_url}")
+    typer.echo(f"  Press Enter to open browser, or visit: {verification_uri}")
     input()
-    webbrowser.open(verification_url)
+    webbrowser.open(verification_uri)
 
-    # Step 2: Poll for token
+    # Step 2: Poll WorkOS token endpoint
     typer.echo("Waiting for authentication...")
-    import time
-
-    with httpx.Client(base_url=api_url, timeout=30) as client:
-        for _ in range(60):  # 5 minutes max (5s intervals)
-            resp = client.post("/auth/token", json={"device_code": device_code})
+    with httpx.Client(timeout=30) as client:
+        for _ in range(60):  # 5 minutes max
+            time.sleep(interval)
+            resp = client.post(
+                f"{authkit_base}/token",
+                data={
+                    "client_id": WORKOS_CLIENT_ID,
+                    "device_code": device_code,
+                    "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+                },
+            )
             if resp.status_code == 200:
-                result = resp.json()
-                if "api_key" in result:
-                    save_credentials(
-                        api_key=result["api_key"],
-                        email=result["email"],
-                        tenant_id=result["tenant_id"],
-                    )
-                    typer.echo(f"\n  Logged in as {result['email']}")
-                    typer.echo("  API key stored in ~/.agentdrive/credentials")
-                    typer.echo("  Ready to use!")
-                    return
-            time.sleep(5)
+                token_data = resp.json()
+                access_token = token_data["access_token"]
+
+                # Step 3: Exchange WorkOS token for Agent Drive API key
+                api_url = _get_api_url()
+                exchange_resp = httpx.post(
+                    f"{api_url}/auth/exchange",
+                    json={"access_token": access_token},
+                    timeout=30,
+                )
+                if exchange_resp.status_code != 200:
+                    typer.echo(f"Error exchanging token: {exchange_resp.text}", err=True)
+                    raise typer.Exit(1)
+
+                result = exchange_resp.json()
+                save_credentials(
+                    api_key=result["api_key"],
+                    email=result["email"],
+                    tenant_id=result["tenant_id"],
+                )
+                typer.echo(f"\n  Logged in as {result['email']}")
+                typer.echo("  API key stored in ~/.agentdrive/credentials")
+                typer.echo("  Ready to use!")
+                return
+
+            error = resp.json().get("error", "")
+            if error == "slow_down":
+                interval += 5
+            elif error in ("access_denied", "expired_token"):
+                typer.echo(f"Login failed: {error}", err=True)
+                raise typer.Exit(1)
+            # "authorization_pending" — keep polling
 
     typer.echo("Login timed out. Please try again.", err=True)
     raise typer.Exit(1)
