@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     environment: str = "development"
     max_upload_bytes: int = 32 * 1024 * 1024  # 32MB
+    workos_api_key: str = ""
+    workos_client_id: str = ""
+    auto_provision_tenants: bool = True
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

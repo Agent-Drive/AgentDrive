@@ -7,7 +7,21 @@ from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
 AGENT_DRIVE_URL = os.environ.get("AGENT_DRIVE_URL", "http://localhost:8080")
-AGENT_DRIVE_API_KEY = os.environ.get("AGENT_DRIVE_API_KEY", "")
+
+
+def _resolve_api_key() -> str:
+    """Resolve API key: env var > credentials file."""
+    key = os.environ.get("AGENT_DRIVE_API_KEY", "")
+    if key:
+        return key
+    creds_file = Path.home() / ".agentdrive" / "credentials"
+    if creds_file.exists():
+        creds = json.loads(creds_file.read_text())
+        return creds.get("api_key", "")
+    return ""
+
+
+AGENT_DRIVE_API_KEY = _resolve_api_key()
 
 server = Server("agent-drive")
 
@@ -57,6 +71,16 @@ async def list_tools() -> list[Tool]:
              inputSchema={"type": "object", "properties": {
                  "chunk_id": {"type": "string", "description": "Chunk ID"},
              }, "required": ["chunk_id"]}),
+        Tool(name="create_api_key", description="Create a new API key for your tenant.",
+             inputSchema={"type": "object", "properties": {
+                 "name": {"type": "string", "description": "Name for the key (e.g. 'production', 'ci')"},
+             }}),
+        Tool(name="list_api_keys", description="List all API keys for your tenant.",
+             inputSchema={"type": "object", "properties": {}}),
+        Tool(name="revoke_api_key", description="Revoke an API key by ID.",
+             inputSchema={"type": "object", "properties": {
+                 "key_id": {"type": "string", "description": "UUID of the key to revoke"},
+             }, "required": ["key_id"]}),
     ]
 
 
@@ -110,6 +134,20 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
         elif name == "get_chunk":
             response = await client.get(f"/v1/chunks/{arguments['chunk_id']}")
+            return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
+        elif name == "create_api_key":
+            body = {}
+            if "name" in arguments:
+                body["name"] = arguments["name"]
+            response = await client.post("/v1/api-keys", json=body)
+            return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
+        elif name == "list_api_keys":
+            response = await client.get("/v1/api-keys")
+            return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
+        elif name == "revoke_api_key":
+            response = await client.delete(f"/v1/api-keys/{arguments['key_id']}")
+            if response.status_code == 204:
+                return [TextContent(type="text", text="API key revoked successfully.")]
             return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
 

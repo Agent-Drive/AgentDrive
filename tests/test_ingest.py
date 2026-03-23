@@ -4,13 +4,12 @@ import pytest_asyncio
 from agentdrive.models.file import File
 from agentdrive.models.tenant import Tenant
 from agentdrive.models.types import FileStatus
-from agentdrive.services.auth import hash_api_key
 from agentdrive.services.ingest import process_file
 
 
 @pytest_asyncio.fixture
 async def test_file(db_session):
-    tenant = Tenant(name="Test", api_key_hash=hash_api_key("sk-test"))
+    tenant = Tenant(name="Test")
     db_session.add(tenant)
     await db_session.commit()
     await db_session.refresh(tenant)
