@@ -1,0 +1,14 @@
+.git
+.github/
+.claude/
+.venv/
+tests/
+docs/
+packages/
+cloud-run/
+*.md
+.env*
+__pycache__/
+*.pyc
+.pytest_cache/
+uv.lock
