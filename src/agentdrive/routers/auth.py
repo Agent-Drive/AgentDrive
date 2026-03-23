@@ -49,6 +49,14 @@ def get_workos_user(access_token: str):
         return None
 
 
+@router.get("/config")
+async def auth_config():
+    """Public endpoint — returns client_id for CLI device flow."""
+    if not settings.workos_client_id:
+        raise HTTPException(status_code=503, detail="WorkOS not configured")
+    return {"client_id": settings.workos_client_id}
+
+
 @router.post("/exchange", response_model=ExchangeResponse)
 async def exchange_token(
     body: ExchangeRequest,

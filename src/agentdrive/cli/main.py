@@ -11,7 +11,6 @@ app = typer.Typer(name="agentdrive", help="Agent Drive CLI")
 
 DEFAULT_API_URL = "http://localhost:8080"
 WORKOS_API_BASE = "https://api.workos.com"
-WORKOS_CLIENT_ID = os.environ.get("WORKOS_CLIENT_ID", "")
 
 
 def _get_api_url() -> str:
@@ -21,15 +20,20 @@ def _get_api_url() -> str:
 @app.command()
 def login():
     """Authenticate with Agent Drive via browser login (WorkOS device flow)."""
-    if not WORKOS_CLIENT_ID:
-        typer.echo("Error: WORKOS_CLIENT_ID must be set.", err=True)
-        raise typer.Exit(1)
+    api_url = _get_api_url()
 
+    # Fetch client_id from server
     typer.echo("Starting login...")
     with httpx.Client(timeout=30) as client:
+        config_resp = client.get(f"{api_url}/auth/config")
+        if config_resp.status_code != 200:
+            typer.echo(f"Error: could not reach Agent Drive server at {api_url}", err=True)
+            raise typer.Exit(1)
+        client_id = config_resp.json()["client_id"]
+
         resp = client.post(
             f"{WORKOS_API_BASE}/user_management/authorize/device",
-            json={"client_id": WORKOS_CLIENT_ID},
+            json={"client_id": client_id},
         )
         if resp.status_code != 200:
             typer.echo(f"Error starting device auth: {resp.text}", err=True)
@@ -53,7 +57,7 @@ def login():
             resp = client.post(
                 f"{WORKOS_API_BASE}/user_management/authenticate",
                 json={
-                    "client_id": WORKOS_CLIENT_ID,
+                    "client_id": client_id,
                     "device_code": device_code,
                     "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
                 },
@@ -62,7 +66,6 @@ def login():
                 token_data = resp.json()
                 access_token = token_data["access_token"]
 
-                api_url = _get_api_url()
                 exchange_resp = httpx.post(
                     f"{api_url}/auth/exchange",
                     json={"access_token": access_token},
