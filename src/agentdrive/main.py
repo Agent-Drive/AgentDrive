@@ -1,11 +1,22 @@
-# src/agentdrive/main.py
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
 
 from agentdrive.config import settings
+from agentdrive.db.session import async_session_factory
 from agentdrive.routers import api_keys, auth, collections, files, search
+from agentdrive.services.queue import reap_stuck_files, start_workers, stop_workers
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with async_session_factory() as session:
+        await reap_stuck_files(session)
+    start_workers()
+    yield
+    await stop_workers()
 
 
 def create_app() -> FastAPI:
@@ -13,6 +24,7 @@ def create_app() -> FastAPI:
         title="Agent Drive",
         version="0.1.0",
         description="Agent-native file intelligence layer",
+        lifespan=lifespan,
     )
     app.include_router(api_keys.router)
     app.include_router(auth.router)
@@ -26,11 +38,8 @@ def create_app() -> FastAPI:
 
     @app.get("/install.sh", response_class=PlainTextResponse)
     async def install_script():
-        # In Docker: WORKDIR /app, scripts at /app/scripts/
-        # In dev: scripts/ is at project root relative to cwd
         script_path = Path("scripts/install.sh")
         if not script_path.is_file():
-            # Fallback for running from source tree
             script_path = Path(__file__).resolve().parent.parent.parent / "scripts" / "install.sh"
         if not script_path.is_file():
             return PlainTextResponse("install script not found", status_code=404)
