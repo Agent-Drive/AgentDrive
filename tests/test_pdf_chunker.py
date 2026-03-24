@@ -143,14 +143,23 @@ class TestDocAiToMarkdown:
         assert "Copyright 2025" not in result
 
 
+def _mock_pdf_reader(page_count: int = 1):
+    """Create a mock PdfReader with the given number of pages."""
+    mock_reader = MagicMock()
+    mock_reader.pages = [MagicMock() for _ in range(page_count)]
+    return mock_reader
+
+
 class TestPdfChunker:
+    @patch("agentdrive.chunking.pdf.PdfReader")
     @patch("agentdrive.chunking.pdf.documentai")
     @patch("agentdrive.chunking.pdf.settings")
-    def test_happy_path(self, mock_settings, mock_docai):
+    def test_happy_path(self, mock_settings, mock_docai, mock_pdf_reader):
         """PdfChunker should call Document AI and produce markdown."""
         mock_settings.gcp_project_id = "test-project"
         mock_settings.docai_location = "us"
         mock_settings.docai_processor_id = "abc123"
+        mock_pdf_reader.return_value = _mock_pdf_reader(5)
 
         mock_block = _make_text_block("# Report\n\nThis is the content.", "paragraph")
         mock_document = _make_document([mock_block])
@@ -173,13 +182,15 @@ class TestPdfChunker:
         call_kwargs = mock_docai.ProcessRequest.call_args[1]
         assert call_kwargs["name"] == "projects/test-project/locations/us/processors/abc123"
 
+    @patch("agentdrive.chunking.pdf.PdfReader")
     @patch("agentdrive.chunking.pdf.documentai")
     @patch("agentdrive.chunking.pdf.settings")
-    def test_empty_document(self, mock_settings, mock_docai):
+    def test_empty_document(self, mock_settings, mock_docai, mock_pdf_reader):
         """PdfChunker should return empty list for empty Document AI response."""
         mock_settings.gcp_project_id = "test-project"
         mock_settings.docai_location = "us"
         mock_settings.docai_processor_id = "abc123"
+        mock_pdf_reader.return_value = _mock_pdf_reader(1)
 
         mock_document = _make_document([])
         mock_result = MagicMock()
@@ -196,13 +207,15 @@ class TestPdfChunker:
 
         assert groups == []
 
+    @patch("agentdrive.chunking.pdf.PdfReader")
     @patch("agentdrive.chunking.pdf.documentai")
     @patch("agentdrive.chunking.pdf.settings")
-    def test_api_error_propagates(self, mock_settings, mock_docai):
+    def test_api_error_propagates(self, mock_settings, mock_docai, mock_pdf_reader):
         """PdfChunker should NOT swallow exceptions."""
         mock_settings.gcp_project_id = "test-project"
         mock_settings.docai_location = "us"
         mock_settings.docai_processor_id = "abc123"
+        mock_pdf_reader.return_value = _mock_pdf_reader(1)
 
         mock_client = MagicMock()
         mock_client.process_document.side_effect = RuntimeError("Document AI failed")
@@ -213,3 +226,36 @@ class TestPdfChunker:
         chunker = PdfChunker()
         with pytest.raises(RuntimeError, match="Document AI failed"):
             chunker.chunk_bytes(b"fake pdf bytes", "bad.pdf")
+
+    @patch("agentdrive.chunking.pdf.PdfWriter")
+    @patch("agentdrive.chunking.pdf.PdfReader")
+    @patch("agentdrive.chunking.pdf.documentai")
+    @patch("agentdrive.chunking.pdf.settings")
+    def test_large_pdf_splits_into_batches(self, mock_settings, mock_docai, mock_pdf_reader, mock_pdf_writer):
+        """PDFs over 30 pages should be split into batches."""
+        mock_settings.gcp_project_id = "test-project"
+        mock_settings.docai_location = "us"
+        mock_settings.docai_processor_id = "abc123"
+        mock_pdf_reader.return_value = _mock_pdf_reader(45)  # 2 batches: 30 + 15
+
+        # Mock PdfWriter to return bytes when write() is called
+        mock_writer_instance = MagicMock()
+        mock_writer_instance.write = MagicMock()
+        mock_pdf_writer.return_value = mock_writer_instance
+
+        mock_block = _make_text_block("Batch content.", "paragraph")
+        mock_document = _make_document([mock_block])
+        mock_result = MagicMock()
+        mock_result.document = mock_document
+
+        mock_client = MagicMock()
+        mock_client.process_document.return_value = mock_result
+        mock_docai.DocumentProcessorServiceClient.return_value = mock_client
+        mock_docai.RawDocument = MagicMock()
+        mock_docai.ProcessRequest = MagicMock()
+
+        chunker = PdfChunker()
+        chunker.chunk_bytes(b"fake pdf bytes", "large.pdf")
+
+        # Should call process_document twice (30 pages + 15 pages)
+        assert mock_client.process_document.call_count == 2
