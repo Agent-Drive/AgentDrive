@@ -1,10 +1,14 @@
+import io
 import logging
 
 from google.cloud import documentai_v1 as documentai
+from pypdf import PdfReader, PdfWriter
 
 from agentdrive.chunking.base import BaseChunker, ParentChildChunks
 from agentdrive.chunking.markdown import MarkdownChunker
 from agentdrive.config import settings
+
+_MAX_PAGES_PER_BATCH = 30
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +102,15 @@ class PdfChunker(BaseChunker):
     def chunk(self, content: str, filename: str, metadata: dict | None = None) -> list[ParentChildChunks]:
         return []
 
+    def _process_batch(self, data: bytes, processor_name: str) -> str:
+        """Send a single PDF (≤30 pages) to Document AI and return markdown."""
+        client = documentai.DocumentProcessorServiceClient()
+        raw_document = documentai.RawDocument(content=data, mime_type="application/pdf")
+        request = documentai.ProcessRequest(name=processor_name, raw_document=raw_document)
+
+        result = client.process_document(request=request)
+        return _doc_ai_to_markdown(result.document)
+
     def chunk_bytes(self, data: bytes, filename: str, metadata: dict | None = None) -> list[ParentChildChunks]:
         processor_name = (
             f"projects/{settings.gcp_project_id}"
@@ -105,14 +118,26 @@ class PdfChunker(BaseChunker):
             f"/processors/{settings.docai_processor_id}"
         )
 
-        client = documentai.DocumentProcessorServiceClient()
-        raw_document = documentai.RawDocument(content=data, mime_type="application/pdf")
-        request = documentai.ProcessRequest(name=processor_name, raw_document=raw_document)
+        # Split large PDFs into batches of ≤30 pages
+        reader = PdfReader(io.BytesIO(data))
+        total_pages = len(reader.pages)
 
-        result = client.process_document(request=request)
-        document = result.document
+        if total_pages <= _MAX_PAGES_PER_BATCH:
+            markdown = self._process_batch(data, processor_name)
+        else:
+            logger.info(f"PDF {filename}: {total_pages} pages, splitting into batches of {_MAX_PAGES_PER_BATCH}")
+            markdown_parts = []
+            for start in range(0, total_pages, _MAX_PAGES_PER_BATCH):
+                writer = PdfWriter()
+                for page_num in range(start, min(start + _MAX_PAGES_PER_BATCH, total_pages)):
+                    writer.add_page(reader.pages[page_num])
+                batch_buffer = io.BytesIO()
+                writer.write(batch_buffer)
+                batch_md = self._process_batch(batch_buffer.getvalue(), processor_name)
+                if batch_md.strip():
+                    markdown_parts.append(batch_md)
+            markdown = "\n\n".join(markdown_parts)
 
-        markdown = _doc_ai_to_markdown(document)
         if not markdown.strip():
             logger.warning(f"PDF {filename}: Document AI produced empty markdown")
             return []

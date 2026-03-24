@@ -8,9 +8,11 @@ def test_supported_types():
     assert "pdf" in chunker.supported_types()
 
 
+@patch("agentdrive.chunking.pdf.PdfReader")
 @patch("agentdrive.chunking.pdf.documentai")
 @patch("agentdrive.chunking.pdf.settings")
-def test_pdf_produces_chunks(mock_settings, mock_docai):
+def test_pdf_produces_chunks(mock_settings, mock_docai, mock_pdf_reader):
+    mock_pdf_reader.return_value.pages = [MagicMock()]
     mock_settings.gcp_project_id = "test-project"
     mock_settings.docai_location = "us"
     mock_settings.docai_processor_id = "abc123"
@@ -47,9 +49,11 @@ def test_pdf_produces_chunks(mock_settings, mock_docai):
     assert "results" in all_content.lower()
 
 
+@patch("agentdrive.chunking.pdf.PdfReader")
 @patch("agentdrive.chunking.pdf.documentai")
 @patch("agentdrive.chunking.pdf.settings")
-def test_pdf_breadcrumbs(mock_settings, mock_docai):
+def test_pdf_breadcrumbs(mock_settings, mock_docai, mock_pdf_reader):
+    mock_pdf_reader.return_value.pages = [MagicMock()]
     mock_settings.gcp_project_id = "test-project"
     mock_settings.docai_location = "us"
     mock_settings.docai_processor_id = "abc123"
