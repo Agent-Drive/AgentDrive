@@ -11,7 +11,7 @@ from agentdrive.models.base import Base
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
-    "postgresql+asyncpg://postgres:postgres@localhost:5433/agentdrive_test",
+    "postgresql+asyncpg://postgres:postgres@localhost:5434/agentdrive_test",
 )
 
 

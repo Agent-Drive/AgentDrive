@@ -12,14 +12,14 @@ cp .env.example .env  # fill in API keys
 # Run server
 uv run uvicorn agentdrive.main:app --port 8080
 
-# Run tests (requires pgvector on port 5433)
+# Run tests (requires pgvector on port 5434)
 uv run pytest tests/ -v
 
 # Run migrations
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5433/agentdrive uv run alembic upgrade head
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5434/agentdrive uv run alembic upgrade head
 
 # Start test DB
-docker run -d --name agentdrive-test-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=agentdrive_test -p 5433:5432 pgvector/pgvector:pg16
+docker run -d --name agentdrive-test-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=agentdrive_test -p 5434:5432 pgvector/pgvector:pg16
 ```
 
 ## Architecture
@@ -45,7 +45,7 @@ src/agentdrive/
 - **Use `uv` always** — never pip. `uv run`, `uv pip install`.
 - **SQLAlchemy `metadata` conflict** — models use `extra_metadata` as the Python attribute (DB column is still `metadata`). Pydantic schemas use `validation_alias="extra_metadata"`.
 - **pgvector columns not in ORM** — `chunks.embedding` and `chunks.embedding_full` are added via Alembic migration, not SQLAlchemy model. Updated via raw SQL `text()`.
-- **Test DB on port 5433** — not 5432. Tests connect to `postgresql+asyncpg://postgres:postgres@localhost:5433/agentdrive_test`.
+- **Test DB on port 5434** — not 5432. Tests connect to `postgresql+asyncpg://postgres:postgres@localhost:5434/agentdrive_test`.
 - **Alembic needs psycopg2** — `uv pip install psycopg2-binary` for sync driver. The async app uses asyncpg.
 - **Code chunks use separate embedding space** — `voyage-code-3` vs `voyage-4`. Separate filtered HNSW indexes in the same `chunks` table.
 - **Enrichment mocked in all tests** — conftest.py has an autouse fixture that no-ops `enrich_chunks`, `generate_table_aliases`, `embed_file_chunks`, and `embed_file_aliases`.
@@ -61,7 +61,7 @@ src/agentdrive/
 
 ## Testing
 
-- Tests require pgvector Docker container on port 5433
+- Tests require pgvector Docker container on port 5434
 - External APIs (Voyage, Cohere, Anthropic, GCS) are mocked in all tests
 - `conftest.py` drops and recreates all tables per test for isolation
 - Integration tests in `test_files.py` and `test_collections.py` use real DB
