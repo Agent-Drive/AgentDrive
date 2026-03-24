@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     ingestion_timeout_seconds: int = 900
     reaper_threshold_minutes: int = 10
 
+    docai_processor_id: str = ""
+    docai_location: str = "us"
+    gcp_project_id: str = ""
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
 
