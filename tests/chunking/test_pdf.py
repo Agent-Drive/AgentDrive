@@ -1,4 +1,5 @@
 from unittest.mock import MagicMock, patch
+
 from agentdrive.chunking.pdf import PdfChunker
 
 
@@ -7,17 +8,36 @@ def test_supported_types():
     assert "pdf" in chunker.supported_types()
 
 
-@patch("agentdrive.chunking.pdf.DocumentConverter")
-def test_pdf_produces_chunks(mock_converter_cls):
+@patch("agentdrive.chunking.pdf.documentai")
+@patch("agentdrive.chunking.pdf.settings")
+def test_pdf_produces_chunks(mock_settings, mock_docai):
+    mock_settings.gcp_project_id = "test-project"
+    mock_settings.docai_location = "us"
+    mock_settings.docai_processor_id = "abc123"
+
+    layout_block = MagicMock()
+    layout_block.table_block = None
+    layout_block.text_block.type_ = "paragraph"
+    layout_block.text_block.text = "This is the intro."
+    layout_block.text_block.blocks = []
+
+    results_block = MagicMock()
+    results_block.table_block = None
+    results_block.text_block.type_ = "heading-1"
+    results_block.text_block.text = "Results"
+    results_block.text_block.blocks = []
+
+    mock_document = MagicMock()
+    mock_document.document_layout.blocks = [layout_block, results_block]
+
     mock_result = MagicMock()
-    mock_result.document.export_to_markdown.return_value = (
-        "# Report\n\n## Introduction\n\nThis is the intro.\n\n"
-        "## Results\n\nThe results show improvement.\n\n"
-        "## Conclusion\n\nWe conclude that things are better."
-    )
-    mock_converter = MagicMock()
-    mock_converter.convert.return_value = mock_result
-    mock_converter_cls.return_value = mock_converter
+    mock_result.document = mock_document
+
+    mock_client = MagicMock()
+    mock_client.process_document.return_value = mock_result
+    mock_docai.DocumentProcessorServiceClient.return_value = mock_client
+    mock_docai.RawDocument = MagicMock()
+    mock_docai.ProcessRequest = MagicMock()
 
     chunker = PdfChunker()
     results = chunker.chunk_bytes(b"fake pdf bytes", "report.pdf")
@@ -27,18 +47,37 @@ def test_pdf_produces_chunks(mock_converter_cls):
     assert "results" in all_content.lower()
 
 
-@patch("agentdrive.chunking.pdf.DocumentConverter")
-def test_pdf_breadcrumbs(mock_converter_cls):
+@patch("agentdrive.chunking.pdf.documentai")
+@patch("agentdrive.chunking.pdf.settings")
+def test_pdf_breadcrumbs(mock_settings, mock_docai):
+    mock_settings.gcp_project_id = "test-project"
+    mock_settings.docai_location = "us"
+    mock_settings.docai_processor_id = "abc123"
+
+    heading_block = MagicMock()
+    heading_block.table_block = None
+    heading_block.text_block.type_ = "heading-1"
+    heading_block.text_block.text = "Setup"
+    heading_block.text_block.blocks = []
+
+    body_text = "Install the package by running the installer script. " * 20
+    body_block = MagicMock()
+    body_block.table_block = None
+    body_block.text_block.type_ = "paragraph"
+    body_block.text_block.text = body_text
+    body_block.text_block.blocks = []
+
+    mock_document = MagicMock()
+    mock_document.document_layout.blocks = [heading_block, body_block]
+
     mock_result = MagicMock()
-    mock_result.document.export_to_markdown.return_value = (
-        "# Guide\n\n## Setup\n\n"
-        + "Install the package by running the installer script. "
-        * 20
-        + "\n"
-    )
-    mock_converter = MagicMock()
-    mock_converter.convert.return_value = mock_result
-    mock_converter_cls.return_value = mock_converter
+    mock_result.document = mock_document
+
+    mock_client = MagicMock()
+    mock_client.process_document.return_value = mock_result
+    mock_docai.DocumentProcessorServiceClient.return_value = mock_client
+    mock_docai.RawDocument = MagicMock()
+    mock_docai.ProcessRequest = MagicMock()
 
     chunker = PdfChunker()
     results = chunker.chunk_bytes(b"pdf", "guide.pdf")

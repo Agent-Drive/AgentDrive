@@ -2,6 +2,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from agentdrive.chunking.pdf import PdfChunker
+
 
 def _make_text_block(text: str, type_: str = "paragraph"):
     """Make a mock text_block with type and text."""
@@ -139,3 +141,75 @@ class TestDocAiToMarkdown:
         assert "Actual content." in result
         assert "Page 1 of 10" not in result
         assert "Copyright 2025" not in result
+
+
+class TestPdfChunker:
+    @patch("agentdrive.chunking.pdf.documentai")
+    @patch("agentdrive.chunking.pdf.settings")
+    def test_happy_path(self, mock_settings, mock_docai):
+        """PdfChunker should call Document AI and produce markdown."""
+        mock_settings.gcp_project_id = "test-project"
+        mock_settings.docai_location = "us"
+        mock_settings.docai_processor_id = "abc123"
+
+        mock_block = _make_text_block("# Report\n\nThis is the content.", "paragraph")
+        mock_document = _make_document([mock_block])
+
+        mock_result = MagicMock()
+        mock_result.document = mock_document
+
+        mock_client = MagicMock()
+        mock_client.process_document.return_value = mock_result
+        mock_docai.DocumentProcessorServiceClient.return_value = mock_client
+        mock_docai.RawDocument = MagicMock()
+        mock_docai.ProcessRequest = MagicMock()
+
+        chunker = PdfChunker()
+        chunker.chunk_bytes(b"fake pdf bytes", "report.pdf")
+
+        mock_client.process_document.assert_called_once()
+
+        mock_docai.ProcessRequest.assert_called_once()
+        call_kwargs = mock_docai.ProcessRequest.call_args[1]
+        assert call_kwargs["name"] == "projects/test-project/locations/us/processors/abc123"
+
+    @patch("agentdrive.chunking.pdf.documentai")
+    @patch("agentdrive.chunking.pdf.settings")
+    def test_empty_document(self, mock_settings, mock_docai):
+        """PdfChunker should return empty list for empty Document AI response."""
+        mock_settings.gcp_project_id = "test-project"
+        mock_settings.docai_location = "us"
+        mock_settings.docai_processor_id = "abc123"
+
+        mock_document = _make_document([])
+        mock_result = MagicMock()
+        mock_result.document = mock_document
+
+        mock_client = MagicMock()
+        mock_client.process_document.return_value = mock_result
+        mock_docai.DocumentProcessorServiceClient.return_value = mock_client
+        mock_docai.RawDocument = MagicMock()
+        mock_docai.ProcessRequest = MagicMock()
+
+        chunker = PdfChunker()
+        groups = chunker.chunk_bytes(b"fake pdf bytes", "empty.pdf")
+
+        assert groups == []
+
+    @patch("agentdrive.chunking.pdf.documentai")
+    @patch("agentdrive.chunking.pdf.settings")
+    def test_api_error_propagates(self, mock_settings, mock_docai):
+        """PdfChunker should NOT swallow exceptions."""
+        mock_settings.gcp_project_id = "test-project"
+        mock_settings.docai_location = "us"
+        mock_settings.docai_processor_id = "abc123"
+
+        mock_client = MagicMock()
+        mock_client.process_document.side_effect = RuntimeError("Document AI failed")
+        mock_docai.DocumentProcessorServiceClient.return_value = mock_client
+        mock_docai.RawDocument = MagicMock()
+        mock_docai.ProcessRequest = MagicMock()
+
+        chunker = PdfChunker()
+        with pytest.raises(RuntimeError, match="Document AI failed"):
+            chunker.chunk_bytes(b"fake pdf bytes", "bad.pdf")
