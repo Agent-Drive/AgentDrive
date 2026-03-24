@@ -56,6 +56,12 @@ spec:
                 secretKeyRef:
                   key: latest
                   name: agentdrive-workos-api-key
+            - name: DOCAI_PROCESSOR_ID
+              value: "FILL_AFTER_PROCESSOR_CREATION"
+            - name: DOCAI_LOCATION
+              value: "us"
+            - name: GCP_PROJECT_ID
+              value: "agent-drive-491013"
           startupProbe:
             httpGet:
               path: /health
