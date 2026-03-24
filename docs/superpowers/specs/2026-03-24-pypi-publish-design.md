@@ -29,8 +29,18 @@ Release flow: bump version in `packages/mcp/pyproject.toml` → commit → push 
 
 ### Triggers
 
-- **Tag push:** `v*` — primary release path
+- **Tag push:** `v[0-9]*` — primary release path
 - **Manual dispatch:** `workflow_dispatch` — retry/recovery path, no inputs needed
+
+### Concurrency
+
+```yaml
+concurrency:
+  group: pypi-publish
+  cancel-in-progress: false
+```
+
+Prevents racing publishes if a tag push and manual dispatch overlap.
 
 ### Job: `publish`
 
@@ -42,7 +52,7 @@ Release flow: bump version in `packages/mcp/pyproject.toml` → commit → push 
 
 1. **Checkout** — `actions/checkout@v4`
 2. **Setup Python** — `actions/setup-python@v5` with Python 3.12
-3. **Extract version** — read version from `packages/mcp/pyproject.toml`
+3. **Extract version** — `python -c "import tomllib; print(tomllib.load(open('packages/mcp/pyproject.toml','rb'))['project']['version'])"` (tomllib is stdlib in 3.12)
 4. **Validate tag** (tag trigger only) — fail if tag `vX.Y.Z` doesn't match pyproject.toml version `X.Y.Z`
 5. **Install build** — `pip install build`
 6. **Build** — `python -m build packages/mcp/` (produces sdist + wheel in `packages/mcp/dist/`)
@@ -68,12 +78,13 @@ These must be done before the first publish:
    - Repository: `Agent-Drive/AgentDrive`
    - Workflow: `publish.yml`
    - Environment: `pypi`
+4. **Package metadata** — add `readme`, `license`, `authors`, and `urls` to `packages/mcp/pyproject.toml` before first publish (PyPI listing quality)
 
 ## Verification
 
 After first publish:
 
-- `pip install agentdrive-mcp` installs successfully
+- `pip install agentdrive-mcp==0.1.0` installs successfully
 - `uvx agentdrive-mcp --help` shows CLI commands
 - `curl -fsSL https://api.agentdrive.so/install.sh | sh` completes full install flow
 
