@@ -4,9 +4,9 @@ import sys
 from pathlib import Path
 
 import httpx
-from mcp.server import Server
+from mcp.server import InitializationOptions, Server
 from mcp.server.stdio import stdio_server
-from mcp.types import TextContent, Tool
+from mcp.types import ServerCapabilities, TextContent, Tool
 
 AGENT_DRIVE_URL = os.environ.get("AGENT_DRIVE_URL", "https://api.agentdrive.so")
 
@@ -163,7 +163,12 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 
 async def main():
     async with stdio_server() as (read_stream, write_stream):
-        await server.run(read_stream, write_stream)
+        init_options = InitializationOptions(
+            server_name="agent-drive",
+            server_version="0.1.1",
+            capabilities=ServerCapabilities(tools={"listChanged": False}),
+        )
+        await server.run(read_stream, write_stream, init_options)
 
 
 if __name__ == "__main__":
