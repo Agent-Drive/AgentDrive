@@ -8,7 +8,7 @@ echo ""
 # Detect package manager: uvx > pipx > pip --user
 if command -v uvx >/dev/null 2>&1; then
     echo "  Detected uv"
-    uvx --force-reinstall agentdrive-mcp install --method uvx
+    uvx agentdrive-mcp@latest install --method uvx
 elif command -v pipx >/dev/null 2>&1; then
     echo "  Detected pipx"
     pipx install --force agentdrive-mcp
