@@ -1,15 +1,15 @@
 import uuid
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from agentdrive.config import settings
-from agentdrive.db.session import async_session_factory, get_session
+from agentdrive.db.session import get_session
 from agentdrive.dependencies import get_current_tenant
 from agentdrive.models.file import File as FileModel
 from agentdrive.models.tenant import Tenant
 from agentdrive.schemas.files import FileDetailResponse, FileListResponse, FileUploadResponse
 from agentdrive.services.file_type import detect_content_type
-from agentdrive.services.ingest import process_file
+from agentdrive.services.queue import enqueue
 from agentdrive.services.storage import StorageService
 
 router = APIRouter(prefix="/v1/files", tags=["files"])
@@ -19,7 +19,6 @@ router = APIRouter(prefix="/v1/files", tags=["files"])
 async def upload_file(
     file: UploadFile = File(...),
     collection: uuid.UUID | None = Form(None),
-    background_tasks: BackgroundTasks = BackgroundTasks(),
     tenant: Tenant = Depends(get_current_tenant),
     session: AsyncSession = Depends(get_session),
 ):
@@ -39,11 +38,7 @@ async def upload_file(
     await session.commit()
     await session.refresh(file_record)
 
-    async def run_ingest():
-        async with async_session_factory() as ingest_session:
-            await process_file(file_record.id, ingest_session)
-
-    background_tasks.add_task(run_ingest)
+    enqueue(file_record.id)
     return FileUploadResponse.model_validate(file_record)
 
 

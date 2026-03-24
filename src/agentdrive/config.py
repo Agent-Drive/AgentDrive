@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     workos_api_key: str = ""
     workos_client_id: str = ""
     auto_provision_tenants: bool = True
+    ingestion_workers: int = 3
+    ingestion_timeout_seconds: int = 900
+    reaper_threshold_minutes: int = 10
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

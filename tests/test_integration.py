@@ -25,9 +25,9 @@ async def authed_client(client, db_session):
 
 @pytest.mark.asyncio
 @patch("agentdrive.routers.search._get_engine")
-@patch("agentdrive.routers.files.process_file", new_callable=AsyncMock)
+@patch("agentdrive.routers.files.enqueue", lambda file_id: None)
 @patch("agentdrive.routers.files.StorageService")
-async def test_upload_and_search(mock_storage_cls, mock_process_file, mock_get_engine, authed_client):
+async def test_upload_and_search(mock_storage_cls, mock_get_engine, authed_client):
     # Mock GCS
     mock_storage = MagicMock()
     mock_storage.upload.return_value = "test/path"
