@@ -1,6 +1,10 @@
 import asyncio
 import logging
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from agentdrive.config import settings
 from agentdrive.db.session import async_session_factory
@@ -79,3 +83,40 @@ async def stop_workers() -> None:
     await asyncio.gather(*_workers, return_exceptions=True)
     _workers.clear()
     logger.info("All ingestion workers stopped")
+
+
+async def reap_stuck_files(session: AsyncSession) -> list[UUID]:
+    """Reset stuck PROCESSING files to PENDING and enqueue all PENDING files.
+
+    Returns list of file IDs that were enqueued.
+    """
+    threshold = datetime.now(timezone.utc) - timedelta(minutes=settings.reaper_threshold_minutes)
+
+    # Step 1: Reset stuck processing files
+    result = await session.execute(
+        select(File).where(
+            File.status == FileStatus.PROCESSING,
+            File.updated_at < threshold,
+        )
+    )
+    stuck_files = result.scalars().all()
+    for f in stuck_files:
+        logger.warning(f"Reaper: resetting stuck file {f.id} ({f.filename}) to PENDING")
+        f.status = FileStatus.PENDING
+    if stuck_files:
+        await session.commit()
+
+    # Step 2: Enqueue all pending files
+    result = await session.execute(
+        select(File).where(File.status == FileStatus.PENDING)
+    )
+    pending_files = result.scalars().all()
+    enqueued = []
+    for f in pending_files:
+        enqueue(f.id)
+        enqueued.append(f.id)
+
+    if enqueued:
+        logger.info(f"Reaper: enqueued {len(enqueued)} pending files")
+
+    return enqueued
