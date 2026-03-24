@@ -98,7 +98,7 @@ def _write_mcp_config(method: str, api_url: str) -> None:
     """Write MCP config to ~/.claude.json using claude CLI or direct JSON merge."""
     if method == "uvx":
         command = "uvx"
-        args = ["agentdrive-mcp", "serve"]
+        args = ["agentdrive-mcp@latest", "serve"]
     else:
         command = "agentdrive-mcp"
         args = ["serve"]
