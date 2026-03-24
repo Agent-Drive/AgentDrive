@@ -1,8 +1,11 @@
+import logging
 import tempfile
 from pathlib import Path
 from docling.document_converter import DocumentConverter
 from agentdrive.chunking.base import BaseChunker, ParentChildChunks
 from agentdrive.chunking.markdown import MarkdownChunker
+
+logger = logging.getLogger(__name__)
 
 
 class PdfChunker(BaseChunker):
@@ -27,9 +30,11 @@ class PdfChunker(BaseChunker):
             result = converter.convert(temp_path)
             markdown = result.document.export_to_markdown()
             if not markdown or not markdown.strip():
+                logger.warning(f"PDF {filename}: Docling produced empty markdown")
                 return []
             return self._markdown_chunker.chunk(markdown, filename, metadata)
         except Exception:
+            logger.exception(f"PDF {filename}: Docling conversion failed")
             return []
         finally:
             Path(temp_path).unlink(missing_ok=True)
