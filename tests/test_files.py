@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 import pytest
 import pytest_asyncio
 from agentdrive.models.api_key import ApiKey
@@ -10,8 +10,8 @@ TEST_API_KEY = "sk-ad-filetest1keyforunittestingfiles"
 
 @pytest.fixture(autouse=True)
 def mock_ingest(monkeypatch):
-    """Prevent the background ingest task from connecting to the production DB during tests."""
-    monkeypatch.setattr("agentdrive.routers.files.process_file", AsyncMock())
+    """Prevent enqueue from starting real ingestion during tests."""
+    monkeypatch.setattr("agentdrive.routers.files.enqueue", lambda file_id: None)
 
 
 @pytest_asyncio.fixture
