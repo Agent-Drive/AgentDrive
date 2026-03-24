@@ -2,6 +2,14 @@
 name = "agentdrive-mcp"
 version = "0.1.0"
 description = "Agent Drive MCP server for Claude Code"
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "Agent Drive" }]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+]
 requires-python = ">=3.10"
 dependencies = [
     "mcp>=1.0.0",
@@ -14,6 +22,10 @@ dev = ["pytest>=8.0"]
 
 [project.scripts]
 agentdrive-mcp = "agentdrive_mcp.cli:app"
+
+[project.urls]
+Homepage = "https://agentdrive.so"
+Repository = "https://github.com/Agent-Drive/AgentDrive"
 
 [build-system]
 requires = ["hatchling"]
