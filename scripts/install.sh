@@ -1,9 +1,6 @@
 #!/bin/sh
 set -e
 
-# Ensure stdin is from terminal (not the pipe)
-exec < /dev/tty
-
 echo ""
 echo "  Installing Agent Drive MCP..."
 echo ""

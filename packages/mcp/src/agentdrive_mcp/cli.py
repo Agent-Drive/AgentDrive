@@ -45,8 +45,7 @@ def _do_login(api_url: str) -> dict:
     interval = data.get("interval", 5)
 
     typer.echo(f"\n  Your code: {user_code}")
-    typer.echo(f"  Press Enter to open browser, or visit: {verification_uri}")
-    input()
+    typer.echo(f"  Opening browser to: {verification_uri}")
     webbrowser.open(verification_uri)
 
     typer.echo("Waiting for authentication...")
