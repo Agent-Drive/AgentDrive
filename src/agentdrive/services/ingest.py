@@ -34,8 +34,9 @@ async def process_file(file_id: uuid.UUID, session: AsyncSession) -> None:
         chunker = registry.get_chunker(file.content_type)
         chunk_groups = chunker.chunk_bytes(data, file.filename)
 
-        # Get document text for enrichment
-        document_text = data.decode("utf-8", errors="replace")
+        # Build document text from parsed chunks (not raw bytes — raw bytes are
+        # binary garbage for PDFs and exceed Haiku's 200K token context window)
+        document_text = "\n\n".join(group.parent.content for group in chunk_groups)
 
         # Enrich all chunks with LLM context
         chunk_groups = await enrich_chunks(document_text, chunk_groups)
