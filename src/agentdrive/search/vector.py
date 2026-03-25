@@ -25,7 +25,7 @@ async def vector_search(
 ) -> list[SearchResult]:
     embedding_str = "[" + ",".join(str(v) for v in query_embedding) + "]"
 
-    where_clauses = ["f.tenant_id = :tenant_id"]
+    where_clauses = ["f.tenant_id = :tenant_id", "f.status = 'ready'"]
     params: dict = {"tenant_id": str(tenant_id), "embedding": embedding_str, "top_k": top_k}
 
     if collections:

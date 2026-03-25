@@ -3,7 +3,7 @@ from sqlalchemy import BigInteger, ForeignKey, Integer, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from agentdrive.models.base import Base, TimestampMixin, UUIDPrimaryKey
-from agentdrive.models.types import ContentType, FileStatus
+from agentdrive.models.types import FileStatus
 
 
 class File(UUIDPrimaryKey, TimestampMixin, Base):

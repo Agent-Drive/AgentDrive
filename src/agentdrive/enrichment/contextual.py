@@ -20,7 +20,6 @@ async def enrich_chunks(
 
     async def enrich_one(chunk_result):
         async with semaphore:
-            original_prefix = chunk_result.context_prefix
             context = await client.generate_context(document_text, chunk_result.content)
             if context:
                 chunk_result.context_prefix = context

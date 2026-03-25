@@ -1,6 +1,6 @@
 import re
 
-from agentdrive.chunking.base import ChunkResult, ParentChildChunks
+from agentdrive.chunking.base import ParentChildChunks
 from agentdrive.enrichment.client import EnrichmentClient
 
 

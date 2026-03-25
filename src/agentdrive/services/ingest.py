@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from agentdrive.chunking.base import ChunkResult, ParentChildChunks
 from agentdrive.chunking.registry import ChunkerRegistry
 from agentdrive.chunking.tokens import count_tokens
-from agentdrive.config import settings
 from agentdrive.embedding.pipeline import embed_file_aliases, embed_file_chunks
 from agentdrive.enrichment.contextual import (
     enrich_chunks_with_summaries,
