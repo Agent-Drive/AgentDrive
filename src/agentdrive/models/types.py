@@ -8,6 +8,13 @@ class FileStatus(str, enum.Enum):
     FAILED = "failed"
 
 
+class BatchStatus(str, enum.Enum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
 class ContentType(str, enum.Enum):
     PDF = "pdf"
     MARKDOWN = "markdown"

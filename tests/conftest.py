@@ -78,6 +78,38 @@ async def db_engine():
         await conn.execute(sa_text(
             "CREATE INDEX IF NOT EXISTS idx_api_keys_prefix ON api_keys(key_prefix)"
         ))
+        await conn.execute(sa_text(
+            "CREATE TABLE IF NOT EXISTS file_batches ("
+            "id uuid PRIMARY KEY DEFAULT gen_random_uuid(), "
+            "file_id uuid REFERENCES files(id) ON DELETE CASCADE, "
+            "batch_index integer NOT NULL, "
+            "page_range text, "
+            "chunking_status text NOT NULL DEFAULT 'pending', "
+            "enrichment_status text NOT NULL DEFAULT 'pending', "
+            "embedding_status text NOT NULL DEFAULT 'pending', "
+            "chunk_count integer NOT NULL DEFAULT 0, "
+            "created_at timestamptz DEFAULT now(), "
+            "updated_at timestamptz DEFAULT now())"
+        ))
+        await conn.execute(sa_text(
+            "CREATE TABLE IF NOT EXISTS file_summaries ("
+            "id uuid PRIMARY KEY DEFAULT gen_random_uuid(), "
+            "file_id uuid REFERENCES files(id) ON DELETE CASCADE UNIQUE, "
+            "document_summary text NOT NULL, "
+            "section_summaries jsonb NOT NULL DEFAULT '[]', "
+            "created_at timestamptz DEFAULT now(), "
+            "updated_at timestamptz DEFAULT now())"
+        ))
+        # Add progress columns to files
+        for col, default in [
+            ('total_batches', '0'), ('completed_batches', '0'),
+            ('current_phase', None), ('retry_count', '0'),
+        ]:
+            dtype = 'text' if col == 'current_phase' else 'integer'
+            nullable = 'NULL' if col == 'current_phase' else f"NOT NULL DEFAULT {default}"
+            await conn.execute(sa_text(
+                f"ALTER TABLE files ADD COLUMN IF NOT EXISTS {col} {dtype} {nullable}"
+            ))
     yield engine
     await engine.dispose()
 
