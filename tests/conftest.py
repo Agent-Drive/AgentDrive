@@ -21,15 +21,19 @@ def mock_enrichment_and_embedding():
     async def _noop_embed(*args, **kwargs) -> int:
         return 0
 
-    async def _noop_enrich(doc_text, groups):
+    async def _noop_enrich(groups, *args, **kwargs):
         return groups
 
     async def _noop_aliases(groups):
         return []
 
+    async def _noop_summary(text):
+        return {"document_summary": "", "section_summaries": []}
+
     with patch("agentdrive.services.ingest.embed_file_chunks", side_effect=_noop_embed), \
          patch("agentdrive.services.ingest.embed_file_aliases", side_effect=_noop_embed), \
-         patch("agentdrive.services.ingest.enrich_chunks", side_effect=_noop_enrich), \
+         patch("agentdrive.services.ingest.enrich_chunks_with_summaries", side_effect=_noop_enrich), \
+         patch("agentdrive.services.ingest.generate_document_summary", side_effect=_noop_summary), \
          patch("agentdrive.services.ingest.generate_table_aliases", side_effect=_noop_aliases):
         yield
 

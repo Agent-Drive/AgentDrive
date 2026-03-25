@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     ingestion_workers: int = 3
     ingestion_timeout_seconds: int = 900
     reaper_threshold_minutes: int = 10
+    max_retries: int = 3
 
     docai_processor_id: str = ""
     docai_location: str = "us"
