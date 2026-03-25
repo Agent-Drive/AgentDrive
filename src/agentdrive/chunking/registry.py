@@ -1,4 +1,6 @@
-from agentdrive.chunking.base import BaseChunker
+from pathlib import Path
+
+from agentdrive.chunking.base import BaseChunker, ParentChildChunks
 from agentdrive.chunking.code import CodeChunker
 from agentdrive.chunking.markdown import MarkdownChunker
 from agentdrive.chunking.notebook import NotebookChunker
@@ -22,3 +24,10 @@ class ChunkerRegistry:
 
     def get_chunker(self, content_type: str) -> BaseChunker:
         return self._chunkers.get(content_type, self._fallback)
+
+    def chunk_file(
+        self, content_type: str, path: Path, filename: str, metadata: dict | None = None
+    ) -> list[ParentChildChunks]:
+        """Dispatch to the appropriate chunker's chunk_file method."""
+        chunker = self.get_chunker(content_type)
+        return chunker.chunk_file(path, filename, metadata)

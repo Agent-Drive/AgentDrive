@@ -1,5 +1,6 @@
 import io
 import logging
+from pathlib import Path
 
 from google.cloud import documentai_v1 as documentai
 from pypdf import PdfReader, PdfWriter
@@ -111,18 +112,17 @@ class PdfChunker(BaseChunker):
         result = client.process_document(request=request)
         return _doc_ai_to_markdown(result.document)
 
-    def chunk_bytes(self, data: bytes, filename: str, metadata: dict | None = None) -> list[ParentChildChunks]:
+    def _chunk_from_reader(self, reader: PdfReader, data: bytes | None, filename: str, metadata: dict | None) -> list[ParentChildChunks]:
+        """Shared logic: split into batches, call Document AI, chunk markdown."""
         processor_name = (
             f"projects/{settings.gcp_project_id}"
             f"/locations/{settings.docai_location}"
             f"/processors/{settings.docai_processor_id}"
         )
 
-        # Split large PDFs into batches of ≤30 pages
-        reader = PdfReader(io.BytesIO(data))
         total_pages = len(reader.pages)
 
-        if total_pages <= _MAX_PAGES_PER_BATCH:
+        if total_pages <= _MAX_PAGES_PER_BATCH and data is not None:
             markdown = self._process_batch(data, processor_name)
         else:
             logger.info(f"PDF {filename}: {total_pages} pages, splitting into batches of {_MAX_PAGES_PER_BATCH}")
@@ -143,3 +143,12 @@ class PdfChunker(BaseChunker):
             return []
 
         return self._markdown_chunker.chunk(markdown, filename, metadata)
+
+    def chunk_bytes(self, data: bytes, filename: str, metadata: dict | None = None) -> list[ParentChildChunks]:
+        reader = PdfReader(io.BytesIO(data))
+        return self._chunk_from_reader(reader, data, filename, metadata)
+
+    def chunk_file(self, path: Path, filename: str, metadata: dict | None = None) -> list[ParentChildChunks]:
+        """Process PDF directly from disk path, avoiding full in-memory load."""
+        reader = PdfReader(str(path))
+        return self._chunk_from_reader(reader, None, filename, metadata)

@@ -1,5 +1,9 @@
+import tempfile
 import uuid
+from pathlib import Path
+
 from google.cloud import storage as gcs
+
 from agentdrive.config import settings
 
 storage_client = gcs.Client()
@@ -17,6 +21,15 @@ class StorageService:
         blob = self._bucket.blob(path)
         blob.upload_from_string(data, content_type=content_type)
         return path
+
+    def download_to_tempfile(self, gcs_path: str) -> Path:
+        """Download a GCS blob to a temporary file on disk. Caller must clean up."""
+        suffix = Path(gcs_path).suffix or ""
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+        tmp.close()
+        blob = self._bucket.blob(gcs_path)
+        blob.download_to_filename(tmp.name)
+        return Path(tmp.name)
 
     def download(self, gcs_path: str) -> bytes:
         blob = self._bucket.blob(gcs_path)
