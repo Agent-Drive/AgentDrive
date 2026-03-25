@@ -91,7 +91,7 @@ operation = client.batch_process_documents(request=request)
 
 The operation is a Google Cloud LRO (Long-Running Operation). We wrap it with async polling using exponential backoff.
 
-**New function: `_process_async(gcs_uri, processor_name, output_prefix)`**
+**New function: `_process_batch_api(gcs_uri, processor_name, output_prefix)`**
 
 ```
 1. Build BatchProcessRequest with GCS input/output
