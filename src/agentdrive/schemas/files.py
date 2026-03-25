@@ -22,6 +22,9 @@ class FileDetailResponse(BaseModel):
     metadata: dict = Field(validation_alias="extra_metadata")
     created_at: datetime
     chunk_count: int | None = None
+    total_batches: int = 0
+    completed_batches: int = 0
+    current_phase: str | None = None
     model_config = {"from_attributes": True, "populate_by_name": True}
 
 
