@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     docai_processor_id: str = ""
     docai_location: str = "us"
     gcp_project_id: str = ""
+    docai_batch_timeout_seconds: int = 1800
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
