@@ -104,6 +104,8 @@ async def db_engine():
             "created_at timestamptz DEFAULT now(), "
             "updated_at timestamptz DEFAULT now())"
         ))
+        await conn.execute(sa_text("ALTER TABLE parent_chunks ADD COLUMN IF NOT EXISTS batch_id uuid REFERENCES file_batches(id)"))
+        await conn.execute(sa_text("ALTER TABLE chunks ADD COLUMN IF NOT EXISTS batch_id uuid REFERENCES file_batches(id)"))
         # Add progress columns to files
         for col, default in [
             ('total_batches', '0'), ('completed_batches', '0'),

@@ -38,3 +38,23 @@ class StorageService:
     def delete(self, gcs_path: str) -> None:
         blob = self._bucket.blob(gcs_path)
         blob.delete()
+
+    def list_blobs(self, prefix: str) -> list[str]:
+        return [blob.name for blob in self._bucket.list_blobs(prefix=prefix)]
+
+    def delete_prefix(self, prefix: str) -> None:
+        for blob in self._bucket.list_blobs(prefix=prefix):
+            blob.delete()
+
+    def docai_output_prefix(self, file_id: str) -> str:
+        return f"tmp/docai/{file_id}/"
+
+    def gcs_uri(self, path: str) -> str:
+        return f"gs://{self._bucket.name}/{path}"
+
+    def upload_bytes(self, gcs_path: str, data: bytes, content_type: str) -> None:
+        blob = self._bucket.blob(gcs_path)
+        blob.upload_from_string(data, content_type=content_type)
+
+    def delete_blob(self, gcs_path: str) -> None:
+        self.delete(gcs_path)
