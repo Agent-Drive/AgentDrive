@@ -171,10 +171,12 @@ async def test_full_pipeline_resume_after_failure(
         chunk_count=1,
     )
     db_session.add(batch)
+    await db_session.flush()
 
     # Pre-create the parent + child chunks that Phase 1 would have produced
     parent = ParentChunk(
         file_id=pending_file.id,
+        batch_id=batch.id,
         content="Existing parent content",
         token_count=3,
     )
@@ -184,6 +186,7 @@ async def test_full_pipeline_resume_after_failure(
     chunk = Chunk(
         file_id=pending_file.id,
         parent_chunk_id=parent.id,
+        batch_id=batch.id,
         chunk_index=0,
         content="Existing child content",
         context_prefix="",

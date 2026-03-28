@@ -166,9 +166,12 @@ async def test_resume_from_phase2_skips_chunking(
     )
     db_session.add(batch)
 
-    # Pre-create a parent chunk and child chunk
+    await db_session.flush()
+
+    # Pre-create a parent chunk and child chunk with batch_id
     parent = ParentChunk(
         file_id=test_file.id,
+        batch_id=batch.id,
         content="Existing parent content",
         token_count=4,
     )
@@ -178,6 +181,7 @@ async def test_resume_from_phase2_skips_chunking(
     chunk = Chunk(
         file_id=test_file.id,
         parent_chunk_id=parent.id,
+        batch_id=batch.id,
         chunk_index=0,
         content="Existing child content",
         context_prefix="",
