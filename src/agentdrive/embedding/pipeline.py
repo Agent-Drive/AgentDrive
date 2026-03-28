@@ -9,11 +9,17 @@ logger = logging.getLogger(__name__)
 BATCH_SIZE = 64
 
 
-async def embed_file_chunks(file_id: uuid.UUID, session: AsyncSession) -> int:
+async def embed_file_chunks(
+    file_id: uuid.UUID,
+    session: AsyncSession,
+    batch_id: uuid.UUID | None = None,
+) -> int:
     client = EmbeddingClient()
-    result = await session.execute(
-        select(Chunk).where(Chunk.file_id == file_id).order_by(Chunk.chunk_index)
-    )
+    query = select(Chunk).where(Chunk.file_id == file_id)
+    if batch_id is not None:
+        query = query.where(Chunk.batch_id == batch_id)
+    query = query.order_by(Chunk.chunk_index)
+    result = await session.execute(query)
     chunks = result.scalars().all()
     if not chunks:
         return 0
@@ -43,14 +49,19 @@ async def embed_file_chunks(file_id: uuid.UUID, session: AsyncSession) -> int:
     return embedded_count
 
 
-async def embed_file_aliases(file_id: uuid.UUID, session: AsyncSession) -> int:
+async def embed_file_aliases(
+    file_id: uuid.UUID,
+    session: AsyncSession,
+    batch_id: uuid.UUID | None = None,
+) -> int:
     """Embed all chunk aliases for a file."""
     from agentdrive.models.chunk_alias import ChunkAlias
 
     client = EmbeddingClient()
-    result = await session.execute(
-        select(ChunkAlias).where(ChunkAlias.file_id == file_id)
-    )
+    query = select(ChunkAlias).where(ChunkAlias.file_id == file_id)
+    if batch_id is not None:
+        query = query.join(Chunk, ChunkAlias.chunk_id == Chunk.id).where(Chunk.batch_id == batch_id)
+    result = await session.execute(query)
     aliases = result.scalars().all()
     if not aliases:
         return 0
