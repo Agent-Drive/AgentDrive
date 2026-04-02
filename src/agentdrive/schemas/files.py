@@ -34,6 +34,8 @@ class FileDetailResponse(BaseModel):
     collection_id: uuid.UUID | None
     metadata: dict = Field(validation_alias="extra_metadata")
     created_at: datetime
+    updated_at: datetime
+    collection_name: str | None = None
     chunk_count: int | None = None
     total_batches: int = 0
     completed_batches: int = 0

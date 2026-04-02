@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from agentdrive.config import settings
 from agentdrive.db.session import get_session
 from agentdrive.dependencies import get_current_tenant
@@ -118,12 +119,16 @@ async def get_file(
     session: AsyncSession = Depends(get_session),
 ):
     result = await session.execute(
-        select(FileModel).where(FileModel.id == file_id, FileModel.tenant_id == tenant.id)
+        select(FileModel)
+        .options(selectinload(FileModel.collection))
+        .where(FileModel.id == file_id, FileModel.tenant_id == tenant.id)
     )
     file_record = result.scalar_one_or_none()
     if not file_record:
         raise HTTPException(status_code=404, detail="File not found")
-    return FileDetailResponse.model_validate(file_record)
+    response = FileDetailResponse.model_validate(file_record)
+    response.collection_name = file_record.collection.name if file_record.collection else None
+    return response
 
 
 @router.get("", response_model=FileListResponse)
@@ -132,14 +137,19 @@ async def list_files(
     tenant: Tenant = Depends(get_current_tenant),
     session: AsyncSession = Depends(get_session),
 ):
-    query = select(FileModel).where(FileModel.tenant_id == tenant.id)
+    query = select(FileModel).options(selectinload(FileModel.collection)).where(FileModel.tenant_id == tenant.id)
     if collection:
         query = query.where(FileModel.collection_id == collection)
     query = query.order_by(FileModel.created_at.desc())
     result = await session.execute(query)
     files = result.scalars().all()
+    responses = []
+    for f in files:
+        resp = FileDetailResponse.model_validate(f)
+        resp.collection_name = f.collection.name if f.collection else None
+        responses.append(resp)
     return FileListResponse(
-        files=[FileDetailResponse.model_validate(f) for f in files],
+        files=responses,
         total=len(files),
     )
 

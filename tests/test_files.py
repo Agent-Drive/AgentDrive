@@ -90,3 +90,48 @@ async def test_delete_file(mock_storage_cls, authed_client):
     response = await client.delete(f"/v1/files/{file_id}")
     assert response.status_code == 204
     mock_storage.delete.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch("agentdrive.routers.files.StorageService")
+async def test_get_file_includes_updated_at(mock_storage_cls, authed_client):
+    client, tenant = authed_client
+    mock_storage = MagicMock()
+    mock_storage.upload.return_value = "path"
+    mock_storage_cls.return_value = mock_storage
+    upload = await client.post(
+        "/v1/files",
+        files={"file": ("test.txt", b"hello", "text/plain")},
+    )
+    file_id = upload.json()["id"]
+    response = await client.get(f"/v1/files/{file_id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert "updated_at" in data
+    assert data["updated_at"] is not None
+
+
+@pytest.mark.asyncio
+@patch("agentdrive.routers.files.StorageService")
+async def test_get_file_includes_collection_name(mock_storage_cls, authed_client, db_session):
+    client, tenant = authed_client
+    mock_storage = MagicMock()
+    mock_storage.upload.return_value = "path"
+    mock_storage_cls.return_value = mock_storage
+
+    from agentdrive.models.collection import Collection
+    collection = Collection(tenant_id=tenant.id, name="My Test Collection")
+    db_session.add(collection)
+    await db_session.commit()
+    await db_session.refresh(collection)
+
+    upload = await client.post(
+        "/v1/files",
+        files={"file": ("test.txt", b"hello", "text/plain")},
+        data={"collection": str(collection.id)},
+    )
+    file_id = upload.json()["id"]
+    response = await client.get(f"/v1/files/{file_id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["collection_name"] == "My Test Collection"
