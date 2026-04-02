@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -129,6 +130,35 @@ async def get_file(
     response = FileDetailResponse.model_validate(file_record)
     response.collection_name = file_record.collection.name if file_record.collection else None
     return response
+
+
+@router.get("/{file_id}/download")
+async def download_file(
+    file_id: uuid.UUID,
+    tenant: Tenant = Depends(get_current_tenant),
+    session: AsyncSession = Depends(get_session),
+):
+    result = await session.execute(
+        select(FileModel).where(FileModel.id == file_id, FileModel.tenant_id == tenant.id)
+    )
+    file_record = result.scalar_one_or_none()
+    if not file_record:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    storage = StorageService()
+    try:
+        stream = storage.download_stream(file_record.gcs_path)
+    except FileNotFoundError:
+        raise HTTPException(status_code=502, detail="File blob not found in storage")
+
+    return StreamingResponse(
+        stream,
+        media_type=file_record.content_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{file_record.filename}"',
+            "Content-Length": str(file_record.file_size),
+        },
+    )
 
 
 @router.get("", response_model=FileListResponse)

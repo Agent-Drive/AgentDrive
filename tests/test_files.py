@@ -1,3 +1,4 @@
+import uuid
 from unittest.mock import MagicMock, patch
 import pytest
 import pytest_asyncio
@@ -135,3 +136,33 @@ async def test_get_file_includes_collection_name(mock_storage_cls, authed_client
     assert response.status_code == 200
     data = response.json()
     assert data["collection_name"] == "My Test Collection"
+
+
+@pytest.mark.asyncio
+@patch("agentdrive.routers.files.StorageService")
+async def test_download_file(mock_storage_cls, authed_client):
+    client, tenant = authed_client
+    file_content = b"hello world file content"
+    mock_storage = MagicMock()
+    mock_storage.upload.return_value = "fake/path"
+    mock_storage.download_stream.return_value = iter([file_content])
+    mock_storage_cls.return_value = mock_storage
+
+    resp = await client.post(
+        "/v1/files",
+        files={"file": ("test.txt", file_content, "text/plain")},
+    )
+    file_id = resp.json()["id"]
+
+    dl_resp = await client.get(f"/v1/files/{file_id}/download")
+    assert dl_resp.status_code == 200
+    assert dl_resp.content == file_content
+    assert "attachment" in dl_resp.headers.get("content-disposition", "")
+    assert "test.txt" in dl_resp.headers.get("content-disposition", "")
+
+
+@pytest.mark.asyncio
+async def test_download_file_not_found(authed_client):
+    client, tenant = authed_client
+    resp = await client.get(f"/v1/files/{uuid.uuid4()}/download")
+    assert resp.status_code == 404
