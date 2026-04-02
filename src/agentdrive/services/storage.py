@@ -58,3 +58,30 @@ class StorageService:
 
     def delete_blob(self, gcs_path: str) -> None:
         self.delete(gcs_path)
+
+    def generate_signed_upload_url(
+        self, tenant_id: uuid.UUID, file_id: uuid.UUID, filename: str,
+        content_type: str, expiry_hours: int = 1,
+    ) -> str:
+        """Generate a V4 signed URL for direct-to-GCS upload.
+
+        Requires service account credentials (not user ADC).
+        """
+        from datetime import timedelta
+        path = self.generate_path(tenant_id, file_id, filename)
+        blob = self._bucket.blob(path)
+        return blob.generate_signed_url(
+            version="v4",
+            expiration=timedelta(hours=expiry_hours),
+            method="PUT",
+            content_type=content_type,
+        )
+
+    def blob_exists(self, gcs_path: str) -> bool:
+        blob = self._bucket.blob(gcs_path)
+        return blob.exists()
+
+    def get_blob_size(self, gcs_path: str) -> int:
+        blob = self._bucket.blob(gcs_path)
+        blob.reload()
+        return blob.size

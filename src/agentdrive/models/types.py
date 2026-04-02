@@ -2,6 +2,7 @@ import enum
 
 
 class FileStatus(str, enum.Enum):
+    UPLOADING = "uploading"
     PENDING = "pending"
     PROCESSING = "processing"
     READY = "ready"
