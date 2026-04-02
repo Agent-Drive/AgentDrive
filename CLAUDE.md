@@ -59,6 +59,11 @@ src/agentdrive/
 | Anthropic | Contextual enrichment (Haiku) | `ANTHROPIC_API_KEY` |
 | GCP/GCS | File storage | `gcloud auth application-default login` |
 
+## Git Worktrees
+
+- **Worktree directory:** `.claude/worktrees/` — always use this location for feature branches
+- **Branch naming:** `feat/<feature-name>` or `fix/<feature-name>`
+
 ## Testing
 
 - Tests require pgvector Docker container on port 5434

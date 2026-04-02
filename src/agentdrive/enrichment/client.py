@@ -1,3 +1,4 @@
+import json
 import logging
 
 import anthropic
@@ -17,6 +18,30 @@ TABLE_QUESTIONS_PROMPT = """Given this table from a document:
 {table_text}
 </table>
 Generate 5-8 natural language questions that someone might ask that this table could answer. Return only the questions, one per line."""
+
+SUMMARY_PROMPT = """Analyze this document and produce:
+1. A document_summary (2-3 sentences describing the document's purpose, parties involved, and subject matter)
+2. section_summaries (a list of objects with "heading" and "summary" for each major section)
+
+<document>
+{document_text}
+</document>
+
+Return valid JSON with this exact structure:
+{{"document_summary": "...", "section_summaries": [{{"heading": "...", "summary": "..."}}]}}"""
+
+CONTEXT_WITH_SUMMARY_PROMPT = """Document summary: {doc_summary}
+
+Section context: {section_summary}
+
+Nearby content:
+{neighbors}
+
+Here is the chunk we want to situate:
+<chunk>
+{chunk_text}
+</chunk>
+Please give a short succinct context to situate this chunk within the overall document for the purposes of improving search retrieval of the chunk. Answer only with the succinct context and nothing else."""
 
 
 class EnrichmentClient:
@@ -49,6 +74,54 @@ class EnrichmentClient:
             return response.content[0].text.strip()
         except Exception as e:
             logger.warning(f"Context generation failed, using empty prefix: {e}")
+            return ""
+
+    async def generate_summary(self, document_text: str) -> dict:
+        """Generate a document summary and section summaries using Haiku."""
+        try:
+            response = await self._client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=1000,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": SUMMARY_PROMPT.format(document_text=document_text),
+                    }
+                ],
+            )
+            text = response.content[0].text.strip()
+            return json.loads(text)
+        except Exception as e:
+            logger.warning(f"Summary generation failed: {e}")
+            return {"document_summary": "", "section_summaries": []}
+
+    async def generate_context_with_summary(
+        self,
+        doc_summary: str,
+        section_summary: str,
+        neighbors: str,
+        chunk_text: str,
+    ) -> str:
+        """Generate a context prefix using document summary and local context."""
+        try:
+            response = await self._client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=200,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": CONTEXT_WITH_SUMMARY_PROMPT.format(
+                            doc_summary=doc_summary,
+                            section_summary=section_summary,
+                            neighbors=neighbors,
+                            chunk_text=chunk_text,
+                        ),
+                    }
+                ],
+            )
+            return response.content[0].text.strip()
+        except Exception as e:
+            logger.warning(f"Context generation with summary failed: {e}")
             return ""
 
     async def generate_table_questions(self, table_text: str) -> list[str]:

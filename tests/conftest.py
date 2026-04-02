@@ -21,15 +21,19 @@ def mock_enrichment_and_embedding():
     async def _noop_embed(*args, **kwargs) -> int:
         return 0
 
-    async def _noop_enrich(doc_text, groups):
+    async def _noop_enrich(groups, *args, **kwargs):
         return groups
 
     async def _noop_aliases(groups):
         return []
 
+    async def _noop_summary(text):
+        return {"document_summary": "", "section_summaries": []}
+
     with patch("agentdrive.services.ingest.embed_file_chunks", side_effect=_noop_embed), \
          patch("agentdrive.services.ingest.embed_file_aliases", side_effect=_noop_embed), \
-         patch("agentdrive.services.ingest.enrich_chunks", side_effect=_noop_enrich), \
+         patch("agentdrive.services.ingest.enrich_chunks_with_summaries", side_effect=_noop_enrich), \
+         patch("agentdrive.services.ingest.generate_document_summary", side_effect=_noop_summary), \
          patch("agentdrive.services.ingest.generate_table_aliases", side_effect=_noop_aliases):
         yield
 
@@ -78,6 +82,40 @@ async def db_engine():
         await conn.execute(sa_text(
             "CREATE INDEX IF NOT EXISTS idx_api_keys_prefix ON api_keys(key_prefix)"
         ))
+        await conn.execute(sa_text(
+            "CREATE TABLE IF NOT EXISTS file_batches ("
+            "id uuid PRIMARY KEY DEFAULT gen_random_uuid(), "
+            "file_id uuid REFERENCES files(id) ON DELETE CASCADE, "
+            "batch_index integer NOT NULL, "
+            "page_range text, "
+            "chunking_status text NOT NULL DEFAULT 'pending', "
+            "enrichment_status text NOT NULL DEFAULT 'pending', "
+            "embedding_status text NOT NULL DEFAULT 'pending', "
+            "chunk_count integer NOT NULL DEFAULT 0, "
+            "created_at timestamptz DEFAULT now(), "
+            "updated_at timestamptz DEFAULT now())"
+        ))
+        await conn.execute(sa_text(
+            "CREATE TABLE IF NOT EXISTS file_summaries ("
+            "id uuid PRIMARY KEY DEFAULT gen_random_uuid(), "
+            "file_id uuid REFERENCES files(id) ON DELETE CASCADE UNIQUE, "
+            "document_summary text NOT NULL, "
+            "section_summaries jsonb NOT NULL DEFAULT '[]', "
+            "created_at timestamptz DEFAULT now(), "
+            "updated_at timestamptz DEFAULT now())"
+        ))
+        await conn.execute(sa_text("ALTER TABLE parent_chunks ADD COLUMN IF NOT EXISTS batch_id uuid REFERENCES file_batches(id)"))
+        await conn.execute(sa_text("ALTER TABLE chunks ADD COLUMN IF NOT EXISTS batch_id uuid REFERENCES file_batches(id)"))
+        # Add progress columns to files
+        for col, default in [
+            ('total_batches', '0'), ('completed_batches', '0'),
+            ('current_phase', None), ('retry_count', '0'),
+        ]:
+            dtype = 'text' if col == 'current_phase' else 'integer'
+            nullable = 'NULL' if col == 'current_phase' else f"NOT NULL DEFAULT {default}"
+            await conn.execute(sa_text(
+                f"ALTER TABLE files ADD COLUMN IF NOT EXISTS {col} {dtype} {nullable}"
+            ))
     yield engine
     await engine.dispose()
 

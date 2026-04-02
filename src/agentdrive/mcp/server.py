@@ -91,13 +91,48 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             file_path = Path(arguments["path"])
             if not file_path.exists():
                 return [TextContent(type="text", text=f"Error: File not found: {file_path}")]
-            with open(file_path, "rb") as f:
-                files = {"file": (file_path.name, f, "application/octet-stream")}
-                data = {}
+
+            file_size = file_path.stat().st_size
+            data = {}
+            if "collection" in arguments:
+                data["collection"] = arguments["collection"]
+
+            if file_size <= 32 * 1024 * 1024:
+                # Direct upload for small files
+                with open(file_path, "rb") as f:
+                    files = {"file": (file_path.name, f, "application/octet-stream")}
+                    response = await client.post("/v1/files", files=files, data=data)
+                return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
+            else:
+                # Signed URL flow for large files
+                url_body = {
+                    "filename": file_path.name,
+                    "content_type": "application/octet-stream",
+                    "file_size": file_size,
+                }
                 if "collection" in arguments:
-                    data["collection"] = arguments["collection"]
-                response = await client.post("/v1/files", files=files, data=data)
-            return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
+                    url_body["collection_id"] = arguments["collection"]
+
+                url_response = await client.post("/v1/files/upload-url", json=url_body)
+                if url_response.status_code != 200:
+                    return [TextContent(type="text", text=f"Error requesting upload URL: {url_response.text}")]
+
+                url_data = url_response.json()
+                upload_url = url_data["upload_url"]
+                file_id = url_data["file_id"]
+
+                # Stream upload directly to GCS (file object, not f.read())
+                with open(file_path, "rb") as f:
+                    put_response = await client.put(
+                        upload_url, content=f,
+                        headers={"Content-Type": "application/octet-stream"},
+                        timeout=3600.0,
+                    )
+                if put_response.status_code not in (200, 201):
+                    return [TextContent(type="text", text=f"Error uploading to GCS: {put_response.status_code}")]
+
+                complete_response = await client.post(f"/v1/files/{file_id}/complete")
+                return [TextContent(type="text", text=json.dumps(complete_response.json(), indent=2))]
         elif name == "search":
             body = {"query": arguments["query"], "top_k": arguments.get("top_k", 5)}
             if "collection" in arguments:

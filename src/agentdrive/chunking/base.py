@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from pathlib import Path
 
 
 @dataclass
@@ -26,6 +27,14 @@ class BaseChunker(ABC):
     def chunk_bytes(self, data: bytes, filename: str, metadata: dict | None = None) -> list[ParentChildChunks]:
         """Process binary content. Override for binary formats (PDF, XLSX). Default decodes as UTF-8."""
         return self.chunk(data.decode("utf-8", errors="replace"), filename, metadata)
+
+    def chunk_file(
+        self, path: Path, filename: str, metadata: dict | None = None,
+        gcs_path: str | None = None, file_id: str | None = None,
+    ) -> list[ParentChildChunks]:
+        """Process a file on disk. Default reads into bytes and delegates to chunk_bytes."""
+        data = path.read_bytes()
+        return self.chunk_bytes(data, filename, metadata)
 
     @abstractmethod
     def supported_types(self) -> list[str]:

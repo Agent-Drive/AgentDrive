@@ -11,6 +11,7 @@ from agentdrive.db.session import async_session_factory
 from agentdrive.models.file import File
 from agentdrive.models.types import FileStatus
 from agentdrive.services.ingest import process_file
+from agentdrive.services.storage import StorageService
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +87,8 @@ async def stop_workers() -> None:
 
 
 async def reap_stuck_files(session: AsyncSession) -> list[UUID]:
-    """Reset stuck PROCESSING files to PENDING and enqueue all PENDING files.
+    """Reset stuck PROCESSING files to PENDING, enqueue all PENDING files, and
+    delete stale UPLOADING files (older than 24 hours) along with their GCS blobs.
 
     Returns list of file IDs that were enqueued.
     """
@@ -118,5 +120,23 @@ async def reap_stuck_files(session: AsyncSession) -> list[UUID]:
 
     if enqueued:
         logger.info(f"Reaper: enqueued {len(enqueued)} pending files")
+
+    # Step 3: Clean up stale UPLOADING files (>24 hours)
+    upload_threshold = datetime.now(timezone.utc) - timedelta(hours=24)
+    result = await session.execute(
+        select(File).where(File.status == FileStatus.UPLOADING, File.created_at < upload_threshold)
+    )
+    stale_uploads = result.scalars().all()
+    if stale_uploads:
+        storage = StorageService()
+        for f in stale_uploads:
+            logger.warning(f"Reaper: deleting stale uploading file {f.id} ({f.filename})")
+            try:
+                if storage.blob_exists(f.gcs_path):
+                    storage.delete(f.gcs_path)
+            except Exception:
+                logger.exception(f"Failed to delete GCS blob for stale upload {f.id}")
+            await session.delete(f)
+        await session.commit()
 
     return enqueued

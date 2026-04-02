@@ -20,6 +20,7 @@ async def bm25_search(
 ) -> list[SearchResult]:
     where_clauses = [
         "f.tenant_id = :tenant_id",
+        "f.status = 'ready'",
         "to_tsvector('english', c.content) @@ plainto_tsquery('english', :query)",
     ]
     params: dict = {"tenant_id": str(tenant_id), "query": query, "top_k": top_k}
