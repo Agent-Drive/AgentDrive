@@ -1,4 +1,5 @@
 import io
+import json
 import logging
 from pathlib import Path
 
@@ -157,7 +158,11 @@ class PdfChunker(BaseChunker):
         for blob_name in output_blobs:
             if blob_name.endswith(".json"):
                 blob_bytes = storage.download(blob_name)
-                document = documentai.Document.from_json(blob_bytes.decode("utf-8"))
+                doc_json = json.loads(blob_bytes.decode("utf-8"))
+                # Batch output has top-level keys like 'docid', 'documentLayout', 'shardInfo'
+                # Strip non-Document fields before parsing as Document proto
+                doc_json.pop("docid", None)
+                document = documentai.Document.from_json(json.dumps(doc_json))
                 md = _doc_ai_to_markdown(document)
                 if md.strip():
                     markdown_parts.append(md)
