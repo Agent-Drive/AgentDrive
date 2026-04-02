@@ -36,13 +36,13 @@ async def tenant_with_legacy_key(db_session: AsyncSession):
 @pytest.mark.asyncio
 async def test_auth_with_new_format_key(client, tenant_with_new_key):
     tenant, raw_key = tenant_with_new_key
-    response = await client.get("/v1/collections", headers={"Authorization": f"Bearer {raw_key}"})
+    response = await client.get("/v1/files", headers={"Authorization": f"Bearer {raw_key}"})
     assert response.status_code == 200
 
 
 @pytest.mark.asyncio
 async def test_auth_with_legacy_key(client, tenant_with_legacy_key):
-    response = await client.get("/v1/collections", headers={"Authorization": f"Bearer {LEGACY_KEY}"})
+    response = await client.get("/v1/files", headers={"Authorization": f"Bearer {LEGACY_KEY}"})
     assert response.status_code == 200
 
 
@@ -54,11 +54,11 @@ async def test_auth_with_revoked_key(client, db_session: AsyncSession, tenant_wi
     from agentdrive.models.api_key import ApiKey as AK
     await db_session.execute(update(AK).where(AK.tenant_id == tenant.id).values(revoked_at=datetime.now(timezone.utc)))
     await db_session.commit()
-    response = await client.get("/v1/collections", headers={"Authorization": f"Bearer {raw_key}"})
+    response = await client.get("/v1/files", headers={"Authorization": f"Bearer {raw_key}"})
     assert response.status_code == 401
 
 
 @pytest.mark.asyncio
 async def test_auth_with_invalid_key(client):
-    response = await client.get("/v1/collections", headers={"Authorization": "Bearer sk-ad-totally-fake-key-abc123"})
+    response = await client.get("/v1/files", headers={"Authorization": "Bearer sk-ad-totally-fake-key-abc123"})
     assert response.status_code == 401
