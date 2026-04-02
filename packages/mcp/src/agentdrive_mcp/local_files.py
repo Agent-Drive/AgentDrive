@@ -7,10 +7,9 @@ import os
 import platform
 import subprocess
 import tempfile
-from collections.abc import Iterator
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
-from typing import BinaryIO
+from typing import Iterator
 
 AGENTDRIVE_FILES_DIR = Path.home() / ".agentdrive" / "files"
 MANIFEST_FILENAME = ".manifest.json"
@@ -91,13 +90,16 @@ def is_stale(
     remote_updated_at: str,
     files_dir: Path = AGENTDRIVE_FILES_DIR,
 ) -> bool:
-    """True if remote file is newer than cached version. String comparison of ISO timestamps."""
+    """True if remote file is newer than cached version. Parses ISO timestamps."""
     manifest = read_manifest(files_dir)
     entry = manifest.get("files", {}).get(file_id)
     if not entry:
         return True
-    cached_updated_at = entry.get("updated_at", "")
-    return remote_updated_at > cached_updated_at
+    cached = entry.get("remote_updated_at", "")
+    try:
+        return datetime.fromisoformat(remote_updated_at) > datetime.fromisoformat(cached)
+    except (ValueError, TypeError):
+        return True  # can't parse, assume stale
 
 
 # ---------------------------------------------------------------------------
@@ -107,14 +109,16 @@ def is_stale(
 
 def save_file(
     file_id: str,
-    byte_stream: BinaryIO,
+    byte_stream: Iterator[bytes],
     metadata: dict,
     files_dir: Path = AGENTDRIVE_FILES_DIR,
 ) -> dict:
     """Write streamed bytes to local path and update manifest. Returns result dict."""
     filename = metadata["filename"]
     collection = metadata.get("collection")
-    updated_at = metadata.get("updated_at", "")
+    file_size = metadata.get("file_size", 0)
+    content_type = metadata.get("content_type", "")
+    remote_updated_at = metadata.get("remote_updated_at", "")
 
     # Check manifest first for existing path (re-download case)
     manifest = read_manifest(files_dir)
@@ -127,8 +131,16 @@ def save_file(
     # Ensure parent directory exists
     local_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Write bytes
-    local_path.write_bytes(byte_stream.read())
+    # Atomic write: temp file + rename
+    fd, tmp_path_str = tempfile.mkstemp(dir=local_path.parent, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "wb") as f:
+            for chunk in byte_stream:
+                f.write(chunk)
+        Path(tmp_path_str).replace(local_path)
+    except Exception:
+        Path(tmp_path_str).unlink(missing_ok=True)
+        raise
 
     # Relative path for manifest (relative to files_dir)
     relative_path = str(local_path.relative_to(files_dir))
@@ -137,14 +149,18 @@ def save_file(
     manifest["files"][file_id] = {
         "local_path": relative_path,
         "filename": filename,
-        "updated_at": updated_at,
+        "remote_updated_at": remote_updated_at,
+        "content_type": content_type,
+        "file_size": file_size,
     }
     write_manifest(manifest, files_dir)
 
     return {
-        "file_id": file_id,
-        "local_path": relative_path,
-        "absolute_path": str(local_path),
+        "local_path": str(local_path),
+        "filename": filename,
+        "collection": collection or "default",
+        "file_size": file_size,
+        "already_cached": False,
     }
 
 

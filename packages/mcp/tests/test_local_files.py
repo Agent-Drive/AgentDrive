@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import io
 import json
 from pathlib import Path
 from unittest.mock import patch
@@ -93,7 +92,7 @@ class TestCaching:
             "files": {
                 "file-123": {
                     "local_path": "default/test.txt",
-                    "updated_at": "2025-01-01T00:00:00Z",
+                    "remote_updated_at": "2025-01-01T00:00:00Z",
                 },
             },
         }
@@ -117,29 +116,55 @@ class TestCaching:
 class TestSaveFile:
     def test_save_file_writes_bytes_and_updates_manifest(self, tmp_path: Path) -> None:
         content = b"hello world"
-        byte_stream = io.BytesIO(content)
+        byte_stream = iter([content])
         metadata = {
             "filename": "notes.txt",
             "collection": "work",
-            "updated_at": "2025-03-28T12:00:00Z",
+            "file_size": 11,
+            "content_type": "text/plain",
+            "remote_updated_at": "2025-03-28T12:00:00Z",
         }
 
         result = save_file("file-abc", byte_stream, metadata, tmp_path)
 
         # File written to disk
-        local_path = tmp_path / result["local_path"]
+        local_path = Path(result["local_path"])
         assert local_path.exists()
         assert local_path.read_bytes() == content
 
         # Manifest updated
         manifest = read_manifest(tmp_path)
         assert "file-abc" in manifest["files"]
-        assert manifest["files"]["file-abc"]["local_path"] == result["local_path"]
 
         # Result dict has expected keys
-        assert result["file_id"] == "file-abc"
-        assert "local_path" in result
-        assert "absolute_path" in result
+        assert result["local_path"] == str(local_path)
+        assert result["filename"] == "notes.txt"
+        assert result["collection"] == "work"
+        assert result["file_size"] == 11
+        assert result["already_cached"] is False
+
+    def test_save_file_redownload_reuses_path(self, tmp_path: Path) -> None:
+        # First download
+        result1 = save_file("file-redownload", iter([b"old content"]), {
+            "filename": "reuse.txt", "collection": "docs",
+            "file_size": 11, "content_type": "text/plain",
+            "remote_updated_at": "2026-04-01T08:00:00Z",
+        }, tmp_path)
+
+        # Re-download same file_id with new content
+        result2 = save_file("file-redownload", iter([b"new content"]), {
+            "filename": "reuse.txt", "collection": "docs",
+            "file_size": 11, "content_type": "text/plain",
+            "remote_updated_at": "2026-04-02T12:00:00Z",
+        }, tmp_path)
+
+        # Same path, not collision-suffixed
+        assert result1["local_path"] == result2["local_path"]
+        # Content overwritten
+        assert Path(result2["local_path"]).read_bytes() == b"new content"
+        # Manifest updated
+        manifest = read_manifest(tmp_path)
+        assert manifest["files"]["file-redownload"]["remote_updated_at"] == "2026-04-02T12:00:00Z"
 
 
 # ---------------------------------------------------------------------------
