@@ -80,6 +80,25 @@ async def list_tools() -> list[Tool]:
              inputSchema={"type": "object", "properties": {
                  "chunk_id": {"type": "string", "description": "Chunk ID"},
              }, "required": ["chunk_id"]}),
+        Tool(
+            name="download_file",
+            description="Download a file from Agent Drive to local disk. Optionally open it in the native OS application.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_id": {
+                        "type": "string",
+                        "description": "UUID of the file to download",
+                    },
+                    "open": {
+                        "type": "boolean",
+                        "description": "Open the file in the native app after download (default: false)",
+                        "default": False,
+                    },
+                },
+                "required": ["file_id"],
+            },
+        ),
         Tool(name="create_api_key", description="Create a new API key for your tenant.",
              inputSchema={"type": "object", "properties": {
                  "name": {"type": "string", "description": "Name for the key (e.g. 'production', 'ci')"},
@@ -144,6 +163,75 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         elif name == "get_chunk":
             response = await client.get(f"/v1/chunks/{arguments['chunk_id']}")
             return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
+        elif name == "download_file":
+            from agentdrive_mcp.local_files import (
+                is_cached,
+                is_stale,
+                read_manifest,
+                save_file,
+                open_native,
+                AGENTDRIVE_FILES_DIR,
+            )
+
+            file_id = arguments["file_id"]
+            should_open = arguments.get("open", False)
+
+            # Check cache
+            if is_cached(file_id):
+                meta_resp = await client.get(f"/v1/files/{file_id}")
+                meta = meta_resp.json()
+                remote_updated = meta.get("updated_at", "")
+                if not is_stale(file_id, remote_updated):
+                    manifest = read_manifest()
+                    entry = manifest["files"][file_id]
+                    local_path = AGENTDRIVE_FILES_DIR / entry["local_path"]
+                    if should_open:
+                        open_native(local_path)
+                    return [
+                        TextContent(
+                            type="text",
+                            text=json.dumps({
+                                "local_path": str(local_path),
+                                "filename": entry["filename"],
+                                "collection": entry["collection"],
+                                "file_size": entry["file_size"],
+                                "already_cached": True,
+                            }),
+                        )
+                    ]
+
+            # Fetch metadata
+            meta_resp = await client.get(f"/v1/files/{file_id}")
+            if meta_resp.status_code != 200:
+                return [TextContent(type="text", text=meta_resp.text)]
+            meta = meta_resp.json()
+
+            # Stream download (collects into memory — acceptable for typical file sizes)
+            async with client.stream("GET", f"/v1/files/{file_id}/download") as dl_resp:
+                if dl_resp.status_code != 200:
+                    text = await dl_resp.aread()
+                    return [TextContent(type="text", text=text.decode())]
+                chunks = []
+                async for chunk in dl_resp.aiter_bytes():
+                    chunks.append(chunk)
+
+            # Save locally
+            result = save_file(
+                file_id,
+                iter(chunks),
+                {
+                    "filename": meta["filename"],
+                    "collection": meta.get("collection_name"),
+                    "file_size": meta["file_size"],
+                    "content_type": meta["content_type"],
+                    "remote_updated_at": meta.get("updated_at", ""),
+                },
+            )
+
+            if should_open:
+                open_native(Path(result["local_path"]))
+
+            return [TextContent(type="text", text=json.dumps(result))]
         elif name == "create_api_key":
             body = {}
             if "name" in arguments:
