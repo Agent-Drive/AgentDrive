@@ -1,5 +1,6 @@
 import tempfile
 import uuid
+from collections.abc import Iterator
 from pathlib import Path
 
 from google.cloud import storage as gcs
@@ -30,6 +31,20 @@ class StorageService:
         blob = self._bucket.blob(gcs_path)
         blob.download_to_filename(tmp.name)
         return Path(tmp.name)
+
+    def download_stream(
+        self, gcs_path: str, chunk_size: int = 256 * 1024
+    ) -> Iterator[bytes]:
+        """Yield file content in chunks from GCS. Raises if blob does not exist."""
+        blob = self._bucket.blob(gcs_path)
+        if not blob.exists():
+            raise FileNotFoundError(f"Blob not found: {gcs_path}")
+        with blob.open("rb") as f:
+            while True:
+                chunk = f.read(chunk_size)
+                if not chunk:
+                    break
+                yield chunk
 
     def download(self, gcs_path: str) -> bytes:
         blob = self._bucket.blob(gcs_path)

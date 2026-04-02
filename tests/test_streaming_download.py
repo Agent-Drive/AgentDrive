@@ -135,3 +135,49 @@ def test_pdf_chunker_chunk_file_uses_file_path(mock_settings, tmp_path):
             result = chunker.chunk_file(pdf_path, "test.pdf")
 
     assert len(result) > 0
+
+
+# ---------------------------------------------------------------------------
+# StorageService.download_stream
+# ---------------------------------------------------------------------------
+
+
+@patch("agentdrive.services.storage.storage_client")
+@patch("agentdrive.services.storage.settings")
+def test_download_stream_yields_chunks(mock_settings, mock_storage_client):
+    """download_stream yields file content in chunks from GCS."""
+    import io
+
+    mock_settings.gcs_bucket = "test-bucket"
+    mock_bucket = MagicMock()
+    mock_storage_client.bucket.return_value = mock_bucket
+
+    content = b"A" * 8192 + b"B" * 4096  # 12KB total
+    fake_blob = MagicMock()
+    fake_blob.exists.return_value = True
+    fake_blob.open.return_value = io.BytesIO(content)
+    mock_bucket.blob.return_value = fake_blob
+
+    svc = StorageService()
+    chunks = list(svc.download_stream("fake/path", chunk_size=4096))
+
+    assert b"".join(chunks) == content
+    assert len(chunks) == 3  # 4096 + 4096 + 4096
+
+
+@patch("agentdrive.services.storage.storage_client")
+@patch("agentdrive.services.storage.settings")
+def test_download_stream_raises_on_missing_blob(mock_settings, mock_storage_client):
+    """download_stream raises FileNotFoundError when blob does not exist."""
+    mock_settings.gcs_bucket = "test-bucket"
+    mock_bucket = MagicMock()
+    mock_storage_client.bucket.return_value = mock_bucket
+
+    fake_blob = MagicMock()
+    fake_blob.exists.return_value = False
+    mock_bucket.blob.return_value = fake_blob
+
+    svc = StorageService()
+
+    with pytest.raises(FileNotFoundError):
+        list(svc.download_stream("missing/path"))
