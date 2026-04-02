@@ -55,18 +55,12 @@ def write_manifest(data: dict, files_dir: Path = AGENTDRIVE_FILES_DIR) -> None:
 
 def resolve_local_path(
     filename: str,
-    collection: str | None,
     file_id: str,
     files_dir: Path = AGENTDRIVE_FILES_DIR,
 ) -> Path:
-    """Build local path. Appends file_id[:8] prefix on name collision."""
-    collection_name = collection or "default"
-    target = files_dir / collection_name / filename
-    if target.exists():
-        stem = Path(filename).stem
-        suffix = Path(filename).suffix
-        short_id = file_id[:8]
-        target = files_dir / collection_name / f"{stem}_{short_id}{suffix}"
+    """Build local path: {file_id_short}_{filename}. No subdirectories."""
+    short_id = file_id[:8]
+    target = files_dir / f"{short_id}_{filename}"
     return target
 
 
@@ -115,7 +109,6 @@ def save_file(
 ) -> dict:
     """Write streamed bytes to local path and update manifest. Returns result dict."""
     filename = metadata["filename"]
-    collection = metadata.get("collection")
     file_size = metadata.get("file_size", 0)
     content_type = metadata.get("content_type", "")
     remote_updated_at = metadata.get("remote_updated_at", "")
@@ -126,7 +119,7 @@ def save_file(
     if existing:
         local_path = files_dir / existing["local_path"]
     else:
-        local_path = resolve_local_path(filename, collection, file_id, files_dir)
+        local_path = resolve_local_path(filename, file_id, files_dir)
 
     # Ensure parent directory exists
     local_path.parent.mkdir(parents=True, exist_ok=True)
@@ -158,7 +151,6 @@ def save_file(
     return {
         "local_path": str(local_path),
         "filename": filename,
-        "collection": collection or "default",
         "file_size": file_size,
         "already_cached": False,
     }
