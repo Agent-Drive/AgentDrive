@@ -102,7 +102,7 @@ class TestDownloadToolStaleRedownload:
             },
             files_dir,
         )
-        assert "file-stale" in result["local_path"]
+        assert "file-sta_stale.txt" in result["local_path"]
         assert Path(result["local_path"]).read_bytes() == b"new content"
         manifest = read_manifest(files_dir)
         assert manifest["files"]["file-stale"]["remote_updated_at"] == "2026-04-02T12:00:00Z"
