@@ -33,7 +33,7 @@ async def search(
     engine = _get_engine()
     results = await engine.search(
         query=body.query, session=session, tenant_id=tenant.id,
-        top_k=body.top_k, collections=body.collections,
+        top_k=body.top_k,
         content_types=body.content_types, include_parent=body.include_parent,
     )
     elapsed_ms = int((time.monotonic() - start) * 1000)

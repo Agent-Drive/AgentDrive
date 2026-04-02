@@ -1,11 +1,10 @@
 import uuid
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from urllib.parse import quote
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 from agentdrive.config import settings
 from agentdrive.db.session import get_session
 from agentdrive.dependencies import get_current_tenant
@@ -26,7 +25,6 @@ router = APIRouter(prefix="/v1/files", tags=["files"])
 @router.post("", status_code=202, response_model=FileUploadResponse)
 async def upload_file(
     file: UploadFile = File(...),
-    collection: uuid.UUID | None = Form(None),
     tenant: Tenant = Depends(get_current_tenant),
     session: AsyncSession = Depends(get_session),
 ):
@@ -38,7 +36,7 @@ async def upload_file(
     storage = StorageService()
     gcs_path = storage.upload(tenant.id, file_id, file.filename or "unknown", data, file.content_type or "")
     file_record = FileModel(
-        id=file_id, tenant_id=tenant.id, collection_id=collection,
+        id=file_id, tenant_id=tenant.id,
         filename=file.filename or "unknown", content_type=content_type,
         gcs_path=gcs_path, file_size=len(data), status="pending",
     )
@@ -70,7 +68,7 @@ async def create_upload_url(
         expiry_hours=settings.signed_url_expiry_hours,
     )
     file_record = FileModel(
-        id=file_id, tenant_id=tenant.id, collection_id=body.collection_id,
+        id=file_id, tenant_id=tenant.id,
         filename=body.filename, content_type=body.content_type,
         gcs_path=gcs_path, file_size=body.file_size,
         status=FileStatus.UPLOADING,
@@ -122,15 +120,12 @@ async def get_file(
 ):
     result = await session.execute(
         select(FileModel)
-        .options(selectinload(FileModel.collection))
         .where(FileModel.id == file_id, FileModel.tenant_id == tenant.id)
     )
     file_record = result.scalar_one_or_none()
     if not file_record:
         raise HTTPException(status_code=404, detail="File not found")
-    response = FileDetailResponse.model_validate(file_record)
-    response.collection_name = file_record.collection.name if file_record.collection else None
-    return response
+    return FileDetailResponse.model_validate(file_record)
 
 
 @router.get("/{file_id}/download")
@@ -168,21 +163,14 @@ async def download_file(
 
 @router.get("", response_model=FileListResponse)
 async def list_files(
-    collection: uuid.UUID | None = None,
     tenant: Tenant = Depends(get_current_tenant),
     session: AsyncSession = Depends(get_session),
 ):
-    query = select(FileModel).options(selectinload(FileModel.collection)).where(FileModel.tenant_id == tenant.id)
-    if collection:
-        query = query.where(FileModel.collection_id == collection)
+    query = select(FileModel).where(FileModel.tenant_id == tenant.id)
     query = query.order_by(FileModel.created_at.desc())
     result = await session.execute(query)
     files = result.scalars().all()
-    responses = []
-    for f in files:
-        resp = FileDetailResponse.model_validate(f)
-        resp.collection_name = f.collection.name if f.collection else None
-        responses.append(resp)
+    responses = [FileDetailResponse.model_validate(f) for f in files]
     return FileListResponse(
         files=responses,
         total=len(files),
