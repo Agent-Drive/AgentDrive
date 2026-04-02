@@ -11,6 +11,5 @@ class Tenant(UUIDPrimaryKey, TimestampMixin, Base):
     workos_user_id: Mapped[str | None] = mapped_column(Text, unique=True)
     settings: Mapped[dict] = mapped_column(JSONB, server_default="{}")
 
-    collections = relationship("Collection", back_populates="tenant")
     files = relationship("File", back_populates="tenant")
     api_keys = relationship("ApiKey", back_populates="tenant")
