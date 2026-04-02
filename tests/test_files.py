@@ -162,6 +162,25 @@ async def test_download_file(mock_storage_cls, authed_client):
 
 
 @pytest.mark.asyncio
+@patch("agentdrive.routers.files.StorageService")
+async def test_download_file_blob_missing(mock_storage_cls, authed_client):
+    client, tenant = authed_client
+    mock_storage = MagicMock()
+    mock_storage.upload.return_value = "fake/path"
+    mock_storage.download_stream.side_effect = FileNotFoundError("gone")
+    mock_storage_cls.return_value = mock_storage
+
+    resp = await client.post(
+        "/v1/files",
+        files={"file": ("test.txt", b"content", "text/plain")},
+    )
+    file_id = resp.json()["id"]
+
+    dl_resp = await client.get(f"/v1/files/{file_id}/download")
+    assert dl_resp.status_code == 502
+
+
+@pytest.mark.asyncio
 async def test_download_file_not_found(authed_client):
     client, tenant = authed_client
     resp = await client.get(f"/v1/files/{uuid.uuid4()}/download")

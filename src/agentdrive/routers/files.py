@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
+from urllib.parse import quote
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -151,13 +152,17 @@ async def download_file(
     except FileNotFoundError:
         raise HTTPException(status_code=502, detail="File blob not found in storage")
 
+    safe_filename = file_record.filename.replace('"', '_')
+    headers = {
+        "Content-Disposition": f"attachment; filename=\"{safe_filename}\"; filename*=UTF-8''{quote(file_record.filename)}",
+    }
+    if file_record.file_size:
+        headers["Content-Length"] = str(file_record.file_size)
+
     return StreamingResponse(
         stream,
         media_type=file_record.content_type,
-        headers={
-            "Content-Disposition": f'attachment; filename="{file_record.filename}"',
-            "Content-Length": str(file_record.file_size),
-        },
+        headers=headers,
     )
 
 
