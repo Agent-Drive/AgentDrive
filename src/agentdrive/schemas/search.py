@@ -1,11 +1,9 @@
-import uuid
 from pydantic import BaseModel
 
 
 class SearchRequest(BaseModel):
     query: str
     top_k: int = 5
-    collections: list[uuid.UUID] | None = None
     content_types: list[str] | None = None
     include_parent: bool = True
 

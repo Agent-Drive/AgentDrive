@@ -29,15 +29,15 @@ src/agentdrive/
 ├── main.py              # FastAPI app entrypoint
 ├── config.py            # Pydantic settings from .env
 ├── dependencies.py      # Auth dependency (API key → tenant)
-├── routers/             # REST endpoints (files, collections, search)
-├── models/              # SQLAlchemy models (tenant, file, chunk, collection, chunk_alias)
+├── routers/             # REST endpoints (files, search)
+├── models/              # SQLAlchemy models (tenant, file, chunk, chunk_alias)
 ├── schemas/             # Pydantic request/response schemas
 ├── services/            # Business logic (ingest, storage, auth)
 ├── chunking/            # File-type-specific chunkers + registry
 ├── embedding/           # Voyage AI client + batch pipeline
 ├── enrichment/          # Haiku contextual enrichment + table questions
 ├── search/              # Vector search, BM25, RRF fusion, Cohere rerank
-└── mcp/                 # MCP server (9 tools for agent integration)
+└── mcp/                 # MCP server (10 tools for agent integration)
 ```
 
 ## Gotchas
@@ -69,4 +69,4 @@ src/agentdrive/
 - Tests require pgvector Docker container on port 5434
 - External APIs (Voyage, Cohere, Anthropic, GCS) are mocked in all tests
 - `conftest.py` drops and recreates all tables per test for isolation
-- Integration tests in `test_files.py` and `test_collections.py` use real DB
+- Integration tests in `test_files.py` use real DB

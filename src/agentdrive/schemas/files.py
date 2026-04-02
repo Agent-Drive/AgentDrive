@@ -7,7 +7,6 @@ class UploadUrlRequest(BaseModel):
     filename: str
     content_type: str = "application/octet-stream"
     file_size: int
-    collection_id: uuid.UUID | None = None
 
 
 class UploadUrlResponse(BaseModel):
@@ -31,11 +30,9 @@ class FileDetailResponse(BaseModel):
     content_type: str
     file_size: int
     status: str
-    collection_id: uuid.UUID | None
     metadata: dict = Field(validation_alias="extra_metadata")
     created_at: datetime
     updated_at: datetime
-    collection_name: str | None = None
     chunk_count: int | None = None
     total_batches: int = 0
     completed_batches: int = 0

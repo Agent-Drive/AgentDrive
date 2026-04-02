@@ -45,6 +45,8 @@ async def db_engine():
 
     engine = create_async_engine(TEST_DATABASE_URL, echo=False, pool_size=5)
     async with engine.begin() as conn:
+        # Drop legacy collections table if it exists (removed from ORM but may linger in DB)
+        await conn.execute(sa_text("DROP TABLE IF EXISTS collections CASCADE"))
         await conn.run_sync(Base.metadata.drop_all)
         await conn.execute(sa_text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(Base.metadata.create_all)

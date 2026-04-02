@@ -48,22 +48,16 @@ class TestManifest:
 
 
 class TestPathResolution:
-    def test_resolve_path_with_collection(self, tmp_path: Path) -> None:
-        path = resolve_local_path("report.pdf", "finance", "abcd1234", tmp_path)
-        assert path == tmp_path / "finance" / "report.pdf"
+    def test_resolve_path_flat(self, tmp_path: Path) -> None:
+        path = resolve_local_path("report.pdf", "abcd1234", tmp_path)
+        assert path == tmp_path / "abcd1234_report.pdf"
 
-    def test_resolve_path_default_collection(self, tmp_path: Path) -> None:
-        path = resolve_local_path("report.pdf", None, "abcd1234", tmp_path)
-        assert path == tmp_path / "default" / "report.pdf"
-
-    def test_resolve_path_handles_collision(self, tmp_path: Path) -> None:
-        # Create existing file so collision triggers
-        collection_dir = tmp_path / "finance"
-        collection_dir.mkdir(parents=True)
-        (collection_dir / "report.pdf").write_text("existing")
-
-        path = resolve_local_path("report.pdf", "finance", "abcd1234efgh", tmp_path)
-        assert path == tmp_path / "finance" / "report_abcd1234.pdf"
+    def test_resolve_path_different_ids(self, tmp_path: Path) -> None:
+        path1 = resolve_local_path("report.pdf", "abcd1234", tmp_path)
+        path2 = resolve_local_path("report.pdf", "efgh5678", tmp_path)
+        assert path1 != path2
+        assert path1 == tmp_path / "abcd1234_report.pdf"
+        assert path2 == tmp_path / "efgh5678_report.pdf"
 
 
 # ---------------------------------------------------------------------------
@@ -119,7 +113,6 @@ class TestSaveFile:
         byte_stream = iter([content])
         metadata = {
             "filename": "notes.txt",
-            "collection": "work",
             "file_size": 11,
             "content_type": "text/plain",
             "remote_updated_at": "2025-03-28T12:00:00Z",
@@ -139,21 +132,20 @@ class TestSaveFile:
         # Result dict has expected keys
         assert result["local_path"] == str(local_path)
         assert result["filename"] == "notes.txt"
-        assert result["collection"] == "work"
         assert result["file_size"] == 11
         assert result["already_cached"] is False
 
     def test_save_file_redownload_reuses_path(self, tmp_path: Path) -> None:
         # First download
         result1 = save_file("file-redownload", iter([b"old content"]), {
-            "filename": "reuse.txt", "collection": "docs",
+            "filename": "reuse.txt",
             "file_size": 11, "content_type": "text/plain",
             "remote_updated_at": "2026-04-01T08:00:00Z",
         }, tmp_path)
 
         # Re-download same file_id with new content
         result2 = save_file("file-redownload", iter([b"new content"]), {
-            "filename": "reuse.txt", "collection": "docs",
+            "filename": "reuse.txt",
             "file_size": 11, "content_type": "text/plain",
             "remote_updated_at": "2026-04-02T12:00:00Z",
         }, tmp_path)

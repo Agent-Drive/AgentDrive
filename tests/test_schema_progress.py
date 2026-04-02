@@ -10,9 +10,9 @@ def test_file_detail_response_includes_progress():
         "content_type": "pdf",
         "file_size": 1000,
         "status": "processing",
-        "collection_id": None,
         "extra_metadata": {},
         "created_at": datetime.now(),
+        "updated_at": datetime.now(),
         "chunk_count": 0,
         "total_batches": 17,
         "completed_batches": 12,
@@ -31,9 +31,9 @@ def test_file_detail_response_defaults_progress():
         "content_type": "pdf",
         "file_size": 1000,
         "status": "ready",
-        "collection_id": None,
         "extra_metadata": {},
         "created_at": datetime.now(),
+        "updated_at": datetime.now(),
     }
     response = FileDetailResponse.model_validate(data)
     assert response.total_batches == 0

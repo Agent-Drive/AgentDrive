@@ -9,7 +9,6 @@ from agentdrive.models.types import FileStatus
 class File(UUIDPrimaryKey, TimestampMixin, Base):
     __tablename__ = "files"
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
-    collection_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("collections.id"))
     filename: Mapped[str] = mapped_column(Text, nullable=False)
     content_type: Mapped[str] = mapped_column(Text, nullable=False)
     gcs_path: Mapped[str] = mapped_column(Text, nullable=False)
@@ -22,7 +21,6 @@ class File(UUIDPrimaryKey, TimestampMixin, Base):
     retry_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
 
     tenant = relationship("Tenant", back_populates="files")
-    collection = relationship("Collection", back_populates="files")
     chunks = relationship("Chunk", back_populates="file", cascade="all, delete-orphan")
     parent_chunks = relationship("ParentChunk", back_populates="file", cascade="all, delete-orphan")
     batches = relationship("FileBatch", back_populates="file", cascade="all, delete-orphan")

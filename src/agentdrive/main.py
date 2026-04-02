@@ -6,7 +6,7 @@ from fastapi.responses import PlainTextResponse
 
 from agentdrive.config import settings
 from agentdrive.db.session import async_session_factory
-from agentdrive.routers import api_keys, auth, collections, files, search
+from agentdrive.routers import api_keys, auth, files, search
 from agentdrive.services.queue import reap_stuck_files, start_workers, stop_workers
 
 
@@ -28,7 +28,6 @@ def create_app() -> FastAPI:
     )
     app.include_router(api_keys.router)
     app.include_router(auth.router)
-    app.include_router(collections.router)
     app.include_router(files.router)
     app.include_router(search.router)
 

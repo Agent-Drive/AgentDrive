@@ -16,7 +16,6 @@ async def bm25_search(
     session: AsyncSession,
     tenant_id: uuid.UUID,
     top_k: int = 50,
-    collections: list[uuid.UUID] | None = None,
 ) -> list[SearchResult]:
     where_clauses = [
         "f.tenant_id = :tenant_id",
@@ -24,10 +23,6 @@ async def bm25_search(
         "to_tsvector('english', c.content) @@ plainto_tsquery('english', :query)",
     ]
     params: dict = {"tenant_id": str(tenant_id), "query": query, "top_k": top_k}
-
-    if collections:
-        where_clauses.append("f.collection_id = ANY(:collections)")
-        params["collections"] = [str(c) for c in collections]
 
     where = " AND ".join(where_clauses)
 

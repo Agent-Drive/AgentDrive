@@ -18,7 +18,6 @@ class SearchEngine:
         session: AsyncSession,
         tenant_id: uuid.UUID,
         top_k: int = 5,
-        collections: list[uuid.UUID] | None = None,
         content_types: list[str] | None = None,
         include_parent: bool = True,
     ) -> list[dict]:
@@ -29,9 +28,9 @@ class SearchEngine:
         # Step 2: Parallel retrieval
         vector_results = await vector_search(
             query_vector_256, session, tenant_id, top_k=50,
-            collections=collections, content_types=content_types,
+            content_types=content_types,
         )
-        bm25_results = await bm25_search(query, session, tenant_id, top_k=50, collections=collections)
+        bm25_results = await bm25_search(query, session, tenant_id, top_k=50)
 
         # Step 3: RRF
         fused = reciprocal_rank_fusion([vector_results, bm25_results], k=60, top_k=20)

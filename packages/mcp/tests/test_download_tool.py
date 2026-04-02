@@ -34,7 +34,6 @@ class TestDownloadToolFreshDownload:
             iter([content]),
             {
                 "filename": "fresh.txt",
-                "collection": "docs",
                 "file_size": len(content),
                 "content_type": "text/plain",
                 "remote_updated_at": "2026-04-02T10:00:00Z",
@@ -60,7 +59,6 @@ class TestDownloadToolCachedHit:
             iter([b"content"]),
             {
                 "filename": "cached.txt",
-                "collection": None,
                 "file_size": 7,
                 "content_type": "text/plain",
                 "remote_updated_at": "2026-04-01T08:00:00Z",
@@ -84,7 +82,6 @@ class TestDownloadToolStaleRedownload:
             iter([b"old content"]),
             {
                 "filename": "stale.txt",
-                "collection": "research",
                 "file_size": 11,
                 "content_type": "text/plain",
                 "remote_updated_at": "2026-04-01T08:00:00Z",
@@ -99,14 +96,13 @@ class TestDownloadToolStaleRedownload:
             iter([b"new content"]),
             {
                 "filename": "stale.txt",
-                "collection": "research",
                 "file_size": 11,
                 "content_type": "text/plain",
                 "remote_updated_at": "2026-04-02T12:00:00Z",
             },
             files_dir,
         )
-        assert result["local_path"].endswith("research/stale.txt")
+        assert "file-sta_stale.txt" in result["local_path"]
         assert Path(result["local_path"]).read_bytes() == b"new content"
         manifest = read_manifest(files_dir)
         assert manifest["files"]["file-stale"]["remote_updated_at"] == "2026-04-02T12:00:00Z"
@@ -128,7 +124,6 @@ class TestDownloadToolOpenFlag:
             iter([b"open me"]),
             {
                 "filename": "open.txt",
-                "collection": None,
                 "file_size": 7,
                 "content_type": "text/plain",
                 "remote_updated_at": "2026-04-02T10:00:00Z",
