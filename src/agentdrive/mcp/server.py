@@ -36,37 +36,22 @@ async def list_tools() -> list[Tool]:
         Tool(name="upload_file", description="Upload a file to Agent Drive for processing and semantic indexing.",
              inputSchema={"type": "object", "properties": {
                  "path": {"type": "string", "description": "Absolute path to the file on disk"},
-                 "collection": {"type": "string", "description": "Collection name (optional)"},
              }, "required": ["path"]}),
         Tool(name="search", description="Search across all uploaded files using natural language.",
              inputSchema={"type": "object", "properties": {
                  "query": {"type": "string", "description": "Natural language search query"},
                  "top_k": {"type": "integer", "description": "Number of results (default 5)", "default": 5},
-                 "collection": {"type": "string", "description": "Limit search to this collection (optional)"},
              }, "required": ["query"]}),
         Tool(name="get_file_status", description="Check the processing status of an uploaded file.",
              inputSchema={"type": "object", "properties": {
                  "file_id": {"type": "string", "description": "File ID returned from upload"},
              }, "required": ["file_id"]}),
         Tool(name="list_files", description="List all files uploaded to Agent Drive.",
-             inputSchema={"type": "object", "properties": {
-                 "collection": {"type": "string", "description": "Filter by collection (optional)"},
-             }}),
-        Tool(name="create_collection", description="Create a named collection to organize files.",
-             inputSchema={"type": "object", "properties": {
-                 "name": {"type": "string", "description": "Collection name"},
-                 "description": {"type": "string", "description": "Collection description (optional)"},
-             }, "required": ["name"]}),
-        Tool(name="list_collections", description="List all collections.",
              inputSchema={"type": "object", "properties": {}}),
         Tool(name="delete_file", description="Delete a file and all its chunks from Agent Drive.",
              inputSchema={"type": "object", "properties": {
                  "file_id": {"type": "string", "description": "File ID to delete"},
              }, "required": ["file_id"]}),
-        Tool(name="delete_collection", description="Delete a collection.",
-             inputSchema={"type": "object", "properties": {
-                 "collection_id": {"type": "string", "description": "Collection ID to delete"},
-             }, "required": ["collection_id"]}),
         Tool(name="get_chunk", description="Get a specific chunk by ID with full content and provenance.",
              inputSchema={"type": "object", "properties": {
                  "chunk_id": {"type": "string", "description": "Chunk ID"},
@@ -112,15 +97,12 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 return [TextContent(type="text", text=f"Error: File not found: {file_path}")]
 
             file_size = file_path.stat().st_size
-            data = {}
-            if "collection" in arguments:
-                data["collection"] = arguments["collection"]
 
             if file_size <= 32 * 1024 * 1024:
                 # Direct upload for small files
                 with open(file_path, "rb") as f:
                     files = {"file": (file_path.name, f, "application/octet-stream")}
-                    response = await client.post("/v1/files", files=files, data=data)
+                    response = await client.post("/v1/files", files=files)
                 return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
             else:
                 # Signed URL flow for large files
@@ -129,8 +111,6 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                     "content_type": "application/octet-stream",
                     "file_size": file_size,
                 }
-                if "collection" in arguments:
-                    url_body["collection_id"] = arguments["collection"]
 
                 url_response = await client.post("/v1/files/upload-url", json=url_body)
                 if url_response.status_code != 200:
@@ -154,37 +134,18 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 return [TextContent(type="text", text=json.dumps(complete_response.json(), indent=2))]
         elif name == "search":
             body = {"query": arguments["query"], "top_k": arguments.get("top_k", 5)}
-            if "collection" in arguments:
-                body["collections"] = [arguments["collection"]]
             response = await client.post("/v1/search", json=body)
             return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
         elif name == "get_file_status":
             response = await client.get(f"/v1/files/{arguments['file_id']}")
             return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
         elif name == "list_files":
-            params = {}
-            if "collection" in arguments:
-                params["collection"] = arguments["collection"]
-            response = await client.get("/v1/files", params=params)
-            return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
-        elif name == "create_collection":
-            body = {"name": arguments["name"]}
-            if "description" in arguments:
-                body["description"] = arguments["description"]
-            response = await client.post("/v1/collections", json=body)
-            return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
-        elif name == "list_collections":
-            response = await client.get("/v1/collections")
+            response = await client.get("/v1/files")
             return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
         elif name == "delete_file":
             response = await client.delete(f"/v1/files/{arguments['file_id']}")
             if response.status_code == 204:
                 return [TextContent(type="text", text="File deleted successfully.")]
-            return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
-        elif name == "delete_collection":
-            response = await client.delete(f"/v1/collections/{arguments['collection_id']}")
-            if response.status_code == 204:
-                return [TextContent(type="text", text="Collection deleted successfully.")]
             return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
         elif name == "get_chunk":
             response = await client.get(f"/v1/chunks/{arguments['chunk_id']}")
@@ -219,7 +180,6 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                             text=json.dumps({
                                 "local_path": str(local_path),
                                 "filename": entry["filename"],
-                                "collection": entry["collection"],
                                 "file_size": entry["file_size"],
                                 "already_cached": True,
                             }),
@@ -247,7 +207,6 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 iter(chunks),
                 {
                     "filename": meta["filename"],
-                    "collection": meta.get("collection_name"),
                     "file_size": meta["file_size"],
                     "content_type": meta["content_type"],
                     "remote_updated_at": meta.get("updated_at", ""),
