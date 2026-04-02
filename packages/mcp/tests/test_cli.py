@@ -25,7 +25,7 @@ def test_write_config_uvx_creates_file(tmp_claude_config):
     assert "agent-drive" in config["mcpServers"]
     entry = config["mcpServers"]["agent-drive"]
     assert entry["command"] == "uvx"
-    assert entry["args"] == ["agentdrive-mcp", "serve"]
+    assert entry["args"] == ["agentdrive-mcp@latest", "serve"]
     assert entry["env"]["AGENT_DRIVE_URL"] == "https://api.agentdrive.so"
 
 
