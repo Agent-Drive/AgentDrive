@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,7 +8,11 @@ from agentdrive.db.session import get_session
 from agentdrive.dependencies import get_current_tenant
 from agentdrive.models.file import File as FileModel
 from agentdrive.models.tenant import Tenant
-from agentdrive.schemas.files import FileDetailResponse, FileListResponse, FileUploadResponse
+from agentdrive.models.types import FileStatus
+from agentdrive.schemas.files import (
+    FileDetailResponse, FileListResponse, FileUploadResponse,
+    UploadUrlRequest, UploadUrlResponse,
+)
 from agentdrive.services.file_type import detect_content_type
 from agentdrive.services.queue import enqueue
 from agentdrive.services.storage import StorageService
@@ -38,6 +43,70 @@ async def upload_file(
     await session.commit()
     await session.refresh(file_record)
 
+    enqueue(file_record.id)
+    return FileUploadResponse.model_validate(file_record)
+
+
+@router.post("/upload-url", status_code=201, response_model=UploadUrlResponse)
+async def create_upload_url(
+    body: UploadUrlRequest,
+    tenant: Tenant = Depends(get_current_tenant),
+    session: AsyncSession = Depends(get_session),
+):
+    if body.file_size > settings.max_signed_upload_bytes:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File exceeds {settings.max_signed_upload_bytes} byte limit",
+        )
+    file_id = uuid.uuid4()
+    storage = StorageService()
+    gcs_path = storage.generate_path(tenant.id, file_id, body.filename)
+    upload_url = storage.generate_signed_upload_url(
+        tenant.id, file_id, body.filename,
+        content_type=body.content_type,
+        expiry_hours=settings.signed_url_expiry_hours,
+    )
+    file_record = FileModel(
+        id=file_id, tenant_id=tenant.id, collection_id=body.collection_id,
+        filename=body.filename, content_type=body.content_type,
+        gcs_path=gcs_path, file_size=body.file_size,
+        status=FileStatus.UPLOADING,
+    )
+    session.add(file_record)
+    await session.commit()
+    await session.refresh(file_record)
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.signed_url_expiry_hours)
+    return UploadUrlResponse(
+        file_id=file_record.id,
+        upload_url=upload_url,
+        expires_at=expires_at,
+    )
+
+
+@router.post("/{file_id}/complete", status_code=200, response_model=FileUploadResponse)
+async def complete_upload(
+    file_id: uuid.UUID,
+    tenant: Tenant = Depends(get_current_tenant),
+    session: AsyncSession = Depends(get_session),
+):
+    result = await session.execute(
+        select(FileModel).where(
+            FileModel.id == file_id,
+            FileModel.tenant_id == tenant.id,
+            FileModel.status == FileStatus.UPLOADING,
+        )
+    )
+    file_record = result.scalar_one_or_none()
+    if not file_record:
+        raise HTTPException(status_code=404, detail="File not found or not in uploading state")
+    storage = StorageService()
+    if not storage.blob_exists(file_record.gcs_path):
+        raise HTTPException(status_code=400, detail="Upload not found in storage")
+    actual_size = storage.get_blob_size(file_record.gcs_path)
+    file_record.file_size = actual_size
+    file_record.status = FileStatus.PENDING
+    await session.commit()
+    await session.refresh(file_record)
     enqueue(file_record.id)
     return FileUploadResponse.model_validate(file_record)
 
