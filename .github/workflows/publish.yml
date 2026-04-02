@@ -36,13 +36,30 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Package version: $VERSION"
 
+      - name: Check if version exists on PyPI
+        id: check
+        env:
+          PKG_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://pypi.org/pypi/agentdrive-mcp/${PKG_VERSION}/json")
+          if [ "$STATUS" = "200" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Version ${PKG_VERSION} already on PyPI — skipping publish"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Version ${PKG_VERSION} not on PyPI — will publish"
+          fi
+
       - name: Install build
+        if: steps.check.outputs.exists == 'false'
         run: pip install build
 
       - name: Build package
+        if: steps.check.outputs.exists == 'false'
         run: python -m build packages/mcp/
 
       - name: Publish to PyPI
+        if: steps.check.outputs.exists == 'false'
         uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # release/v1
         with:
           packages-dir: packages/mcp/dist/
