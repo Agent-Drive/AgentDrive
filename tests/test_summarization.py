@@ -6,6 +6,7 @@ import pytest
 
 from agentdrive.services.ingest import (
     _batch_parents,
+    _hierarchical_summarize,
     _phase2_summarization,
     GROUP_BATCH_TOKENS,
     MAX_SINGLE_PASS_TOKENS,
@@ -121,3 +122,32 @@ async def test_phase2_large_doc_uses_hierarchical(mock_gen_summary, mock_hier):
     mock_gen_summary.assert_not_called()
     mock_hier.assert_called_once()
     assert summary.document_summary == "A large doc."
+
+
+@pytest.mark.asyncio
+@patch("agentdrive.services.ingest.generate_reduce_summary", new_callable=AsyncMock)
+@patch("agentdrive.services.ingest.generate_group_summary", new_callable=AsyncMock)
+async def test_hierarchical_summarize_map_reduce_flow(mock_group, mock_reduce):
+    """Verifies map phase calls generate_group_summary per batch, then reduce combines them."""
+    mock_group.side_effect = [
+        {"summary": "Group 1 summary.", "section_summaries": [{"heading": "A", "summary": "a"}]},
+        {"summary": "Group 2 summary.", "section_summaries": [{"heading": "B", "summary": "b"}]},
+    ]
+    mock_reduce.return_value = {
+        "document_summary": "Full doc summary.",
+        "section_summaries": [{"heading": "A", "summary": "a"}, {"heading": "B", "summary": "b"}],
+    }
+
+    # 4 parents at 20k tokens each = 80k total → 2 batches of 2 at 50k threshold
+    parents = [MagicMock(content=f"content {i}", token_count=20_000) for i in range(4)]
+
+    result = await _hierarchical_summarize(parents)
+
+    # Map phase: 2 batches → 2 group summary calls
+    assert mock_group.call_count == 2
+    # Reduce phase: called once with both group summaries
+    mock_reduce.assert_called_once()
+    reduce_args = mock_reduce.call_args[0][0]
+    assert len(reduce_args) == 2
+    assert result["document_summary"] == "Full doc summary."
+    assert len(result["section_summaries"]) == 2
