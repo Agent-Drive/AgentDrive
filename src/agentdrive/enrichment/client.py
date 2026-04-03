@@ -47,8 +47,8 @@ Please give a short succinct context to situate this chunk within the overall do
 class EnrichmentClient:
     def __init__(self) -> None:
         self._client = openai.AsyncOpenAI(
-            api_key=settings.baseten_api_key,
-            base_url=settings.baseten_base_url,
+            api_key=settings.enrichment_api_key,
+            base_url=settings.enrichment_base_url,
             timeout=30.0,
         )
 
@@ -56,7 +56,7 @@ class EnrichmentClient:
         """Generate a context prefix for a chunk using the full document."""
         try:
             response = await self._client.chat.completions.create(
-                model=settings.baseten_model,
+                model=settings.enrichment_model,
                 max_tokens=200,
                 messages=[
                     {
@@ -74,7 +74,7 @@ class EnrichmentClient:
         """Generate a document summary and section summaries."""
         try:
             response = await self._client.chat.completions.create(
-                model=settings.baseten_model,
+                model=settings.enrichment_model,
                 max_tokens=1000,
                 response_format={"type": "json_object"},
                 messages=[
@@ -100,7 +100,7 @@ class EnrichmentClient:
         """Generate a context prefix using document summary and local context."""
         try:
             response = await self._client.chat.completions.create(
-                model=settings.baseten_model,
+                model=settings.enrichment_model,
                 max_tokens=200,
                 messages=[
                     {
@@ -123,7 +123,7 @@ class EnrichmentClient:
         """Generate synthetic questions for a table chunk."""
         try:
             response = await self._client.chat.completions.create(
-                model=settings.baseten_model,
+                model=settings.enrichment_model,
                 max_tokens=500,
                 messages=[
                     {
