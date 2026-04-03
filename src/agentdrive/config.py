@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     max_signed_upload_bytes: int = 5 * 1024 * 1024 * 1024  # 5GB
     signed_url_expiry_hours: int = 1
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 
 settings = Settings()
