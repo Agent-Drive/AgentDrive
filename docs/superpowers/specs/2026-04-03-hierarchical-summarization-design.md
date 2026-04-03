@@ -78,35 +78,48 @@ New method `EnrichmentClient.generate_group_summary()`:
 
 ### Reduce Phase
 
-Reuses existing `generate_document_summary()` with concatenated group summaries as input instead of raw document text. No changes to the function or its prompt.
+New method `EnrichmentClient.generate_reduce_summary()` with a dedicated prompt. The existing `SUMMARY_PROMPT` wraps input in `<document>` tags and says "Analyze this document" — feeding it pre-summarized text would confuse the model. The reduce prompt instead instructs the LLM to synthesize group summaries into a single coherent summary, merging and deduplicating section summaries across groups.
 
 Reduce input format:
 
 ```
-Group 1 summary: ...
-Sections: ...
+Group 1 (of 4):
+Summary: ...
+Sections:
+- Introduction: ...
+- Background: ...
 
-Group 2 summary: ...
-Sections: ...
+Group 2 (of 4):
+Summary: ...
+Sections:
+- Methodology: ...
 ```
+
+Returns the same schema as `generate_document_summary()`: `{ "document_summary": "...", "section_summaries": [...] }`. The LLM handles merging/deduplication of section summaries across groups into a single flat list.
+
+### Concurrency
+
+Map phase calls run concurrently via `asyncio.gather` with a semaphore (max 5 concurrent). At 200k/50k = ~4 calls this rarely matters, but protects against very large documents producing 20+ batches.
 
 ### Token Settings
 
 Same `max_tokens=16384` for both map and reduce calls.
 
+**Note:** Token counts use `cl100k_base` tokenizer (tiktoken), not Gemini's native tokenizer. The counts are approximate but close enough for a threshold-based safety valve.
+
 ## Files Changed
 
 | File | Change |
 |------|--------|
-| `services/ingest.py` | Token check, `_batch_parents()` helper, `_hierarchical_summarize()` orchestration |
-| `enrichment/client.py` | New `generate_group_summary()` method |
-| `enrichment/contextual.py` | New `generate_group_summaries()` entry point |
+| `services/ingest.py` | Token check, `_batch_parents()` helper, `_hierarchical_summarize()` orchestration with semaphore |
+| `enrichment/client.py` | New `generate_group_summary()` (map) and `generate_reduce_summary()` (reduce) methods with dedicated prompts |
+| `enrichment/contextual.py` | New `generate_group_summary()` thin wrapper (mirrors `generate_document_summary()` pattern) |
 | `tests/` | Batch logic tests, threshold routing tests, hierarchical path tests |
 
 ## Files NOT Changed
 
 - `models/file_summary.py` — no schema changes
-- `enrichment/client.py` existing methods — untouched
+- `enrichment/client.py` existing methods (`generate_summary`, `generate_context`) — untouched
 - `chunking/` — untouched
 - Phase 3 (enrichment), Phase 4 (embedding) — untouched
 - `config.py` — no new settings
@@ -118,3 +131,7 @@ Same `max_tokens=16384` for both map and reduce calls.
 - No contract changes (FileSummary output identical)
 - Existing path for docs ≤ 200k tokens is completely untouched
 - Low risk
+
+## Error Handling
+
+Map phase calls follow the same pattern as existing `generate_summary()`: catch exceptions, log warning, return fallback. If a group summary fails, it returns `{"summary": "", "section_summaries": []}`. The reduce phase proceeds with whatever groups succeeded — a partial summary is better than no summary. If all groups fail, the reduce phase receives empty input and produces an empty summary (same fallback as today's single-call failure mode).
