@@ -52,7 +52,7 @@ spec:
                   key: latest
                   name: agentdrive-baseten-api-key
             - name: BASETEN_BASE_URL
-              value: "https://model-wx41ye7q.api.baseten.co/deployment/wx4vek7/sync/v1"
+              value: "https://model-wx41ye7q.api.baseten.co/environments/production/sync/v1"
             - name: BASETEN_MODEL
               value: "google/gemma-4-26B-A4B-it"
             - name: WORKOS_API_KEY

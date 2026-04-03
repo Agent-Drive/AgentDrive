@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     voyage_api_key: str = ""
     cohere_api_key: str = ""
     baseten_api_key: str = ""
-    baseten_base_url: str = "https://model-wx41ye7q.api.baseten.co/deployment/wx4vek7/sync/v1"
+    baseten_base_url: str = "https://model-wx41ye7q.api.baseten.co/environments/production/sync/v1"
     baseten_model: str = "google/gemma-4-26B-A4B-it"
     environment: str = "development"
     max_upload_bytes: int = 32 * 1024 * 1024  # 32MB
