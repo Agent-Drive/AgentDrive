@@ -49,6 +49,7 @@ class EnrichmentClient:
         self._client = openai.AsyncOpenAI(
             api_key=settings.baseten_api_key,
             base_url=settings.baseten_base_url,
+            timeout=30.0,
         )
 
     async def generate_context(self, document_text: str, chunk_text: str) -> str:
@@ -64,7 +65,7 @@ class EnrichmentClient:
                     }
                 ],
             )
-            return response.choices[0].message.content.strip()
+            return (response.choices[0].message.content or "").strip()
         except Exception as e:
             logger.warning(f"Context generation failed, using empty prefix: {e}")
             return ""
@@ -83,7 +84,7 @@ class EnrichmentClient:
                     }
                 ],
             )
-            text = response.choices[0].message.content.strip()
+            text = (response.choices[0].message.content or "").strip()
             return json.loads(text)
         except Exception as e:
             logger.warning(f"Summary generation failed: {e}")
@@ -113,7 +114,7 @@ class EnrichmentClient:
                     }
                 ],
             )
-            return response.choices[0].message.content.strip()
+            return (response.choices[0].message.content or "").strip()
         except Exception as e:
             logger.warning(f"Context generation with summary failed: {e}")
             return ""
@@ -131,7 +132,7 @@ class EnrichmentClient:
                     }
                 ],
             )
-            text = response.choices[0].message.content.strip()
+            text = (response.choices[0].message.content or "").strip()
             questions = [q.strip().lstrip("0123456789.-) ") for q in text.split("\n") if q.strip()]
             return [q for q in questions if len(q) > 5]
         except Exception as e:
