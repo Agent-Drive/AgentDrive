@@ -1,8 +1,15 @@
 from dataclasses import dataclass
+from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
 
 import pytest
 
-from agentdrive.services.ingest import _batch_parents, GROUP_BATCH_TOKENS
+from agentdrive.services.ingest import (
+    _batch_parents,
+    _phase2_summarization,
+    GROUP_BATCH_TOKENS,
+    MAX_SINGLE_PASS_TOKENS,
+)
 
 
 @dataclass
@@ -60,3 +67,57 @@ def test_batch_parents_preserves_order():
     batches = _batch_parents(parents)
     flat = [p for batch in batches for p in batch]
     assert flat == parents
+
+
+def _mock_session(parents):
+    """Create a mock AsyncSession that returns given parents from execute()."""
+    session = MagicMock()
+    result_mock = MagicMock()
+    result_mock.scalars.return_value.all.return_value = parents
+    # session.execute is async, returns result_mock
+    session.execute = AsyncMock(return_value=result_mock)
+    # session.add is sync (SQLAlchemy), session.commit is async
+    session.add = MagicMock()
+    session.commit = AsyncMock()
+    return session
+
+
+@pytest.mark.asyncio
+@patch("agentdrive.services.ingest.generate_document_summary", new_callable=AsyncMock)
+async def test_phase2_small_doc_uses_single_pass(mock_gen_summary):
+    """Documents under MAX_SINGLE_PASS_TOKENS use generate_document_summary directly."""
+    mock_gen_summary.return_value = {
+        "document_summary": "A short doc.",
+        "section_summaries": [],
+    }
+
+    file = MagicMock(id=uuid4())
+    parent = MagicMock(content="short text", token_count=100)
+    session = _mock_session([parent])
+
+    summary = await _phase2_summarization(file, session)
+
+    mock_gen_summary.assert_called_once()
+    assert summary.document_summary == "A short doc."
+
+
+@pytest.mark.asyncio
+@patch("agentdrive.services.ingest._hierarchical_summarize", new_callable=AsyncMock)
+@patch("agentdrive.services.ingest.generate_document_summary", new_callable=AsyncMock)
+async def test_phase2_large_doc_uses_hierarchical(mock_gen_summary, mock_hier):
+    """Documents over MAX_SINGLE_PASS_TOKENS use _hierarchical_summarize."""
+    mock_hier.return_value = {
+        "document_summary": "A large doc.",
+        "section_summaries": [{"heading": "Intro", "summary": "Intro text."}],
+    }
+
+    file = MagicMock(id=uuid4())
+    # Each parent has 50k tokens, 5 parents = 250k > 200k threshold
+    parents = [MagicMock(content="x " * 1000, token_count=50_000) for _ in range(5)]
+    session = _mock_session(parents)
+
+    summary = await _phase2_summarization(file, session)
+
+    mock_gen_summary.assert_not_called()
+    mock_hier.assert_called_once()
+    assert summary.document_summary == "A large doc."
