@@ -75,7 +75,7 @@ class EnrichmentClient:
         try:
             response = await self._client.chat.completions.create(
                 model=settings.enrichment_model,
-                max_tokens=1000,
+                max_tokens=16384,
                 response_format={"type": "json_object"},
                 messages=[
                     {
