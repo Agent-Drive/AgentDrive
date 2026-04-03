@@ -26,6 +26,9 @@ from agentdrive.services.storage import StorageService
 logger = logging.getLogger(__name__)
 registry = ChunkerRegistry()
 
+MAX_SINGLE_PASS_TOKENS = 200_000
+GROUP_BATCH_TOKENS = 50_000
+
 
 async def process_file(file_id: uuid.UUID, session: AsyncSession) -> None:
     """Orchestrate file ingestion with four phases and resume support."""
@@ -213,6 +216,28 @@ async def _phase1_chunking(
                 tmp_path.unlink(missing_ok=True)
             except OSError:
                 pass
+
+
+def _batch_parents(parents: list) -> list[list]:
+    """Group parent chunks into batches of ~GROUP_BATCH_TOKENS tokens each."""
+    if not parents:
+        return []
+    batches: list[list] = []
+    current_batch: list = []
+    current_tokens = 0
+
+    for parent in parents:
+        token_count = parent.token_count
+        if current_batch and current_tokens + token_count > GROUP_BATCH_TOKENS:
+            batches.append(current_batch)
+            current_batch = []
+            current_tokens = 0
+        current_batch.append(parent)
+        current_tokens += token_count
+
+    if current_batch:
+        batches.append(current_batch)
+    return batches
 
 
 async def _phase2_summarization(
