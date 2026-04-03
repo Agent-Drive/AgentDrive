@@ -15,6 +15,9 @@ uv run uvicorn agentdrive.main:app --port 8080
 # Run tests (requires pgvector on port 5434)
 uv run pytest tests/ -v
 
+# Run a single test
+uv run pytest tests/enrichment/test_client.py::test_generate_context -v
+
 # Run migrations
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5434/agentdrive uv run alembic upgrade head
 
@@ -45,7 +48,7 @@ src/agentdrive/
 - **Use `uv` always** — never pip. `uv run`, `uv pip install`.
 - **SQLAlchemy `metadata` conflict** — models use `extra_metadata` as the Python attribute (DB column is still `metadata`). Pydantic schemas use `validation_alias="extra_metadata"`.
 - **pgvector columns not in ORM** — `chunks.embedding` and `chunks.embedding_full` are added via Alembic migration, not SQLAlchemy model. Updated via raw SQL `text()`.
-- **Test DB on port 5434** — not 5432. Tests connect to `postgresql+asyncpg://postgres:postgres@localhost:5434/agentdrive_test`.
+- **Two DB containers** — dev DB on port 5433 (`agentdrive-db`), test DB on port 5434 (`agentdrive-test-db`). Tests connect to 5434, local server uses 5433. Don't mix them up.
 - **Alembic needs psycopg2** — `uv pip install psycopg2-binary` for sync driver. The async app uses asyncpg.
 - **Code chunks use separate embedding space** — `voyage-code-3` vs `voyage-4`. Separate filtered HNSW indexes in the same `chunks` table.
 - **Enrichment mocked in all tests** — conftest.py has an autouse fixture that no-ops `enrich_chunks`, `generate_table_aliases`, `embed_file_chunks`, and `embed_file_aliases`. Enrichment uses Baseten (OpenAI-compatible API), not Anthropic.
@@ -56,8 +59,9 @@ src/agentdrive/
 |---------|---------|---------|
 | Voyage AI | Embedding (voyage-4, voyage-code-3, voyage-4-lite) | `VOYAGE_API_KEY` |
 | Cohere | Reranking (rerank-v3.5) | `COHERE_API_KEY` |
-| Baseten | Contextual enrichment (Gemma 4 26B-A4B) | `BASETEN_API_KEY` |
+| Baseten | Contextual enrichment (Gemma 4 26B-A4B) | `BASETEN_API_KEY`, `BASETEN_BASE_URL`, `BASETEN_MODEL` |
 | GCP/GCS | File storage | `gcloud auth application-default login` |
+| GCP Document AI | PDF parsing/OCR | `DOCAI_PROCESSOR_ID`, `GCP_PROJECT_ID` |
 
 ## Git Worktrees
 
