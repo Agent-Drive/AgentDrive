@@ -86,7 +86,7 @@ class EnrichmentClient:
             )
             choice = response.choices[0]
             text = (choice.message.content or "").strip()
-            logger.info(
+            logger.warning(
                 f"Summary response: finish_reason={choice.finish_reason}, "
                 f"len={len(text)}, usage={response.usage}, "
                 f"raw_text={text[:200]!r}"
