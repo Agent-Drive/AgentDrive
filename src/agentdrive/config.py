@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     cohere_api_key: str = ""
     enrichment_api_key: str = ""
     enrichment_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
-    enrichment_model: str = "google/gemma-4-26B-A4B-it"
+    enrichment_model: str = "gemini-2.5-flash"
     environment: str = "development"
     max_upload_bytes: int = 32 * 1024 * 1024  # 32MB
     workos_api_key: str = ""
