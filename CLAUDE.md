@@ -38,7 +38,7 @@ src/agentdrive/
 ├── services/            # Business logic (ingest, storage, auth)
 ├── chunking/            # File-type-specific chunkers + registry
 ├── embedding/           # Voyage AI client + batch pipeline
-├── enrichment/          # Gemma 4 contextual enrichment + table questions
+├── enrichment/          # Gemini 2.5 Flash contextual enrichment + table questions
 ├── search/              # Vector search, BM25, RRF fusion, Cohere rerank
 └── mcp/                 # MCP server (10 tools for agent integration)
 ```
@@ -51,7 +51,7 @@ src/agentdrive/
 - **Two DB containers** — dev DB on port 5433 (`agentdrive-db`), test DB on port 5434 (`agentdrive-test-db`). Tests connect to 5434, local server uses 5433. Don't mix them up.
 - **Alembic needs psycopg2** — `uv pip install psycopg2-binary` for sync driver. The async app uses asyncpg.
 - **Code chunks use separate embedding space** — `voyage-code-3` vs `voyage-4`. Separate filtered HNSW indexes in the same `chunks` table.
-- **Enrichment mocked in all tests** — conftest.py has an autouse fixture that no-ops `enrich_chunks`, `generate_table_aliases`, `embed_file_chunks`, and `embed_file_aliases`. Enrichment uses Baseten (OpenAI-compatible API), not Anthropic.
+- **Enrichment mocked in all tests** — conftest.py has an autouse fixture that no-ops `enrich_chunks`, `generate_table_aliases`, `embed_file_chunks`, and `embed_file_aliases`. Enrichment uses Google AI Studio (OpenAI-compatible API) with Gemini 2.5 Flash.
 
 ## External APIs
 
@@ -59,7 +59,7 @@ src/agentdrive/
 |---------|---------|---------|
 | Voyage AI | Embedding (voyage-4, voyage-code-3, voyage-4-lite) | `VOYAGE_API_KEY` |
 | Cohere | Reranking (rerank-v3.5) | `COHERE_API_KEY` |
-| Baseten | Contextual enrichment (Gemma 4 26B-A4B) | `BASETEN_API_KEY`, `BASETEN_BASE_URL`, `BASETEN_MODEL` |
+| Google AI Studio | Contextual enrichment (Gemini 2.5 Flash) | `ENRICHMENT_API_KEY` |
 | GCP/GCS | File storage | `gcloud auth application-default login` |
 | GCP Document AI | PDF parsing/OCR | `DOCAI_PROCESSOR_ID`, `GCP_PROJECT_ID` |
 
@@ -71,6 +71,6 @@ src/agentdrive/
 ## Testing
 
 - Tests require pgvector Docker container on port 5434
-- External APIs (Voyage, Cohere, Baseten, GCS) are mocked in all tests
+- External APIs (Voyage, Cohere, Google AI Studio, GCS) are mocked in all tests
 - `conftest.py` drops and recreates all tables per test for isolation
 - Integration tests in `test_files.py` use real DB
