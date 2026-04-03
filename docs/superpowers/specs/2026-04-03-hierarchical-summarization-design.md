@@ -37,7 +37,7 @@ _phase2_summarization(file, session)
     │   └─ generate_group_summary(group_text)
     │       returns { "summary": "...", "section_summaries": [...] }
     ├─ Collect all intermediate summaries
-    └─ Reduce phase: generate_document_summary(intermediates)
+    └─ Reduce phase: generate_reduce_summary(group_summaries)
         returns { "document_summary": "...", "section_summaries": [...] }
 ```
 
@@ -113,7 +113,7 @@ Same `max_tokens=16384` for both map and reduce calls.
 |------|--------|
 | `services/ingest.py` | Token check, `_batch_parents()` helper, `_hierarchical_summarize()` orchestration with semaphore |
 | `enrichment/client.py` | New `generate_group_summary()` (map) and `generate_reduce_summary()` (reduce) methods with dedicated prompts |
-| `enrichment/contextual.py` | New `generate_group_summary()` thin wrapper (mirrors `generate_document_summary()` pattern) |
+| `enrichment/contextual.py` | New `generate_group_summary()` and `generate_reduce_summary()` thin wrappers (mirrors `generate_document_summary()` pattern) |
 | `tests/` | Batch logic tests, threshold routing tests, hierarchical path tests |
 
 ## Files NOT Changed
