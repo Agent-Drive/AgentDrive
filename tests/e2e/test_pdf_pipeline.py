@@ -13,7 +13,7 @@ from httpx import AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-PDF_PATH = Path(__file__).parent.parent.parent / "test_nexus_annual_report.pdf"
+PDF_PATH = Path(__file__).parent.parent / "fixtures" / "test_nexus_annual_report.pdf"
 POLL_INTERVAL = 5
 POLL_TIMEOUT = 180
 
