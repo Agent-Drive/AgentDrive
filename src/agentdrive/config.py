@@ -7,7 +7,9 @@ class Settings(BaseSettings):
     gcs_bucket: str = "agentdrive-files"
     voyage_api_key: str = ""
     cohere_api_key: str = ""
-    anthropic_api_key: str = ""
+    baseten_api_key: str = ""
+    baseten_base_url: str = "https://model-wx41ye7q.api.baseten.co/environments/production/sync/v1"
+    baseten_model: str = "google/gemma-4-26B-A4B-it"
     environment: str = "development"
     max_upload_bytes: int = 32 * 1024 * 1024  # 32MB
     workos_api_key: str = ""
@@ -25,7 +27,7 @@ class Settings(BaseSettings):
     max_signed_upload_bytes: int = 5 * 1024 * 1024 * 1024  # 5GB
     signed_url_expiry_hours: int = 1
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 
 settings = Settings()

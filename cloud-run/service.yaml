@@ -46,11 +46,15 @@ spec:
                 secretKeyRef:
                   key: latest
                   name: agentdrive-cohere-api-key
-            - name: ANTHROPIC_API_KEY
+            - name: BASETEN_API_KEY
               valueFrom:
                 secretKeyRef:
                   key: latest
-                  name: agentdrive-anthropic-api-key
+                  name: agentdrive-baseten-api-key
+            - name: BASETEN_BASE_URL
+              value: "https://model-wx41ye7q.api.baseten.co/environments/production/sync/v1"
+            - name: BASETEN_MODEL
+              value: "google/gemma-4-26B-A4B-it"
             - name: WORKOS_API_KEY
               valueFrom:
                 secretKeyRef:
