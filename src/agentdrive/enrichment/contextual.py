@@ -41,6 +41,20 @@ async def generate_document_summary(document_text: str) -> dict:
     return await client.generate_summary(document_text)
 
 
+async def generate_group_summary(
+    group_text: str, group_index: int, total_groups: int
+) -> dict:
+    """Summarize a group of parent chunks (map phase of hierarchical summarization)."""
+    client = EnrichmentClient()
+    return await client.generate_group_summary(group_text, group_index, total_groups)
+
+
+async def generate_reduce_summary(group_summaries: list[dict]) -> dict:
+    """Synthesize group summaries into a final document summary (reduce phase)."""
+    client = EnrichmentClient()
+    return await client.generate_reduce_summary(group_summaries)
+
+
 def _find_section_summary(
     chunk_content: str, section_summaries: list[dict]
 ) -> str:

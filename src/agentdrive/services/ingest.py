@@ -13,6 +13,8 @@ from agentdrive.embedding.pipeline import embed_file_aliases, embed_file_chunks
 from agentdrive.enrichment.contextual import (
     enrich_chunks_with_summaries,
     generate_document_summary,
+    generate_group_summary,
+    generate_reduce_summary,
 )
 from agentdrive.enrichment.table_questions import generate_table_aliases
 from agentdrive.models.chunk import Chunk, ParentChunk
@@ -25,6 +27,9 @@ from agentdrive.services.storage import StorageService
 
 logger = logging.getLogger(__name__)
 registry = ChunkerRegistry()
+
+MAX_SINGLE_PASS_TOKENS = 200_000
+GROUP_BATCH_TOKENS = 50_000
 
 
 async def process_file(file_id: uuid.UUID, session: AsyncSession) -> None:
@@ -215,6 +220,45 @@ async def _phase1_chunking(
                 pass
 
 
+def _batch_parents(parents: list) -> list[list]:
+    """Group parent chunks into batches of ~GROUP_BATCH_TOKENS tokens each."""
+    if not parents:
+        return []
+    batches: list[list] = []
+    current_batch: list = []
+    current_tokens = 0
+
+    for parent in parents:
+        token_count = parent.token_count
+        if current_batch and current_tokens + token_count > GROUP_BATCH_TOKENS:
+            batches.append(current_batch)
+            current_batch = []
+            current_tokens = 0
+        current_batch.append(parent)
+        current_tokens += token_count
+
+    if current_batch:
+        batches.append(current_batch)
+    return batches
+
+
+async def _hierarchical_summarize(parents: list) -> dict:
+    """Map-reduce summarization for large documents."""
+    batches = _batch_parents(parents)
+    semaphore = asyncio.Semaphore(5)
+
+    async def summarize_group(batch: list, index: int) -> dict:
+        async with semaphore:
+            group_text = "\n\n".join(p.content for p in batch)
+            return await generate_group_summary(group_text, index, len(batches))
+
+    group_summaries = await asyncio.gather(
+        *(summarize_group(batch, i + 1) for i, batch in enumerate(batches))
+    )
+
+    return await generate_reduce_summary(list(group_summaries))
+
+
 async def _phase2_summarization(
     file: File, session: AsyncSession
 ) -> FileSummary:
@@ -225,9 +269,16 @@ async def _phase2_summarization(
         .order_by(ParentChunk.created_at)
     )
     parents = result.scalars().all()
-    document_text = "\n\n".join(p.content for p in parents)
+    total_tokens = sum(p.token_count for p in parents)
 
-    summary_data = await generate_document_summary(document_text)
+    if total_tokens > MAX_SINGLE_PASS_TOKENS:
+        logger.info(
+            f"File {file.id}: {total_tokens} tokens exceeds threshold, using hierarchical summarization"
+        )
+        summary_data = await _hierarchical_summarize(parents)
+    else:
+        document_text = "\n\n".join(p.content for p in parents)
+        summary_data = await generate_document_summary(document_text)
 
     summary = FileSummary(
         file_id=file.id,
