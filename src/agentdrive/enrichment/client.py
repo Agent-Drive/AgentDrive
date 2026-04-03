@@ -1,7 +1,7 @@
 import json
 import logging
 
-import anthropic
+import openai
 
 from agentdrive.config import settings
 
@@ -46,42 +46,36 @@ Please give a short succinct context to situate this chunk within the overall do
 
 class EnrichmentClient:
     def __init__(self) -> None:
-        self._client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+        self._client = openai.AsyncOpenAI(
+            api_key=settings.baseten_api_key,
+            base_url=settings.baseten_base_url,
+        )
 
     async def generate_context(self, document_text: str, chunk_text: str) -> str:
-        """Generate a context prefix for a chunk using the full document with prompt caching."""
+        """Generate a context prefix for a chunk using the full document."""
         try:
-            response = await self._client.messages.create(
-                model="claude-haiku-4-5-20251001",
+            response = await self._client.chat.completions.create(
+                model=settings.baseten_model,
                 max_tokens=200,
                 messages=[
                     {
                         "role": "user",
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": f"<document>\n{document_text}\n</document>",
-                                "cache_control": {"type": "ephemeral"},
-                            },
-                            {
-                                "type": "text",
-                                "text": CONTEXT_PROMPT.format(chunk_text=chunk_text),
-                            },
-                        ],
+                        "content": f"<document>\n{document_text}\n</document>\n\n{CONTEXT_PROMPT.format(chunk_text=chunk_text)}",
                     }
                 ],
             )
-            return response.content[0].text.strip()
+            return response.choices[0].message.content.strip()
         except Exception as e:
             logger.warning(f"Context generation failed, using empty prefix: {e}")
             return ""
 
     async def generate_summary(self, document_text: str) -> dict:
-        """Generate a document summary and section summaries using Haiku."""
+        """Generate a document summary and section summaries."""
         try:
-            response = await self._client.messages.create(
-                model="claude-haiku-4-5-20251001",
+            response = await self._client.chat.completions.create(
+                model=settings.baseten_model,
                 max_tokens=1000,
+                response_format={"type": "json_object"},
                 messages=[
                     {
                         "role": "user",
@@ -89,7 +83,7 @@ class EnrichmentClient:
                     }
                 ],
             )
-            text = response.content[0].text.strip()
+            text = response.choices[0].message.content.strip()
             return json.loads(text)
         except Exception as e:
             logger.warning(f"Summary generation failed: {e}")
@@ -104,8 +98,8 @@ class EnrichmentClient:
     ) -> str:
         """Generate a context prefix using document summary and local context."""
         try:
-            response = await self._client.messages.create(
-                model="claude-haiku-4-5-20251001",
+            response = await self._client.chat.completions.create(
+                model=settings.baseten_model,
                 max_tokens=200,
                 messages=[
                     {
@@ -119,7 +113,7 @@ class EnrichmentClient:
                     }
                 ],
             )
-            return response.content[0].text.strip()
+            return response.choices[0].message.content.strip()
         except Exception as e:
             logger.warning(f"Context generation with summary failed: {e}")
             return ""
@@ -127,8 +121,8 @@ class EnrichmentClient:
     async def generate_table_questions(self, table_text: str) -> list[str]:
         """Generate synthetic questions for a table chunk."""
         try:
-            response = await self._client.messages.create(
-                model="claude-haiku-4-5-20251001",
+            response = await self._client.chat.completions.create(
+                model=settings.baseten_model,
                 max_tokens=500,
                 messages=[
                     {
@@ -137,7 +131,7 @@ class EnrichmentClient:
                     }
                 ],
             )
-            text = response.content[0].text.strip()
+            text = response.choices[0].message.content.strip()
             questions = [q.strip().lstrip("0123456789.-) ") for q in text.split("\n") if q.strip()]
             return [q for q in questions if len(q) > 5]
         except Exception as e:
