@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import uuid
 from sqlalchemy import select, text
@@ -29,7 +30,9 @@ async def embed_file_chunks(
         batch = chunks[i:i + BATCH_SIZE]
         texts = [f"{c.context_prefix}\n{c.content}" if c.context_prefix else c.content for c in batch]
         content_type = batch[0].content_type
-        vectors_full = client.embed(texts, input_type="document", content_type=content_type)
+        vectors_full = await asyncio.to_thread(
+            client.embed, texts, input_type="document", content_type=content_type
+        )
 
         for chunk, vector in zip(batch, vectors_full):
             vector_256 = client.truncate(vector, 256)
@@ -71,7 +74,9 @@ async def embed_file_aliases(
         batch = aliases[i:i + BATCH_SIZE]
         texts = [a.content for a in batch]
         # Aliases are synthetic questions — embed as queries for better matching
-        vectors = client.embed(texts, input_type="query", content_type="text")
+        vectors = await asyncio.to_thread(
+            client.embed, texts, input_type="query", content_type="text"
+        )
 
         for alias, vector in zip(batch, vectors):
             vec_256 = client.truncate(vector, 256)

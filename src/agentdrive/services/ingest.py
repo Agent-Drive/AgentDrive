@@ -1,5 +1,7 @@
+import asyncio
 import logging
 import uuid
+from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -118,20 +120,35 @@ async def _get_summary(
     return result.scalar_one_or_none()
 
 
+def _download_and_chunk(
+    gcs_path: str, content_type: str, filename: str, file_id: str
+) -> tuple[list[ParentChildChunks], Path]:
+    """Sync I/O: download from GCS and chunk. Runs in a thread pool."""
+    storage = StorageService()
+    tmp_path = storage.download_to_tempfile(gcs_path)
+    try:
+        chunk_groups = registry.chunk_file(
+            content_type,
+            tmp_path,
+            filename,
+            gcs_path=gcs_path,
+            file_id=file_id,
+        )
+        return chunk_groups, tmp_path
+    except Exception:
+        tmp_path.unlink(missing_ok=True)
+        raise
+
+
 async def _phase1_chunking(
     file: File, session: AsyncSession
 ) -> list[FileBatch]:
     """Download file, chunk it, persist batches + chunks. Returns empty list if 0 chunks."""
-    storage = StorageService()
     tmp_path = None
     try:
-        tmp_path = storage.download_to_tempfile(file.gcs_path)
-        chunk_groups = registry.chunk_file(
-            file.content_type,
-            tmp_path,
-            file.filename,
-            gcs_path=file.gcs_path,
-            file_id=str(file.id),
+        chunk_groups, tmp_path = await asyncio.to_thread(
+            _download_and_chunk,
+            file.gcs_path, file.content_type, file.filename, str(file.id),
         )
 
         if not chunk_groups or sum(len(g.children) for g in chunk_groups) == 0:
