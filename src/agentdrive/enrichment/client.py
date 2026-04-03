@@ -84,7 +84,13 @@ class EnrichmentClient:
                     }
                 ],
             )
-            text = (response.choices[0].message.content or "").strip()
+            choice = response.choices[0]
+            text = (choice.message.content or "").strip()
+            logger.info(
+                f"Summary response: finish_reason={choice.finish_reason}, "
+                f"len={len(text)}, usage={response.usage}, "
+                f"raw_text={text[:200]!r}"
+            )
             return json.loads(text)
         except Exception as e:
             logger.warning(f"Summary generation failed: {e}")
