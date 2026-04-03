@@ -266,18 +266,17 @@ async def _phase3_enrichment(
             for child in group.children:
                 enriched_children.append(child)
 
+        # Build ChunkResult → db chunk_id mapping (positional)
+        chunk_id_map: dict[int, uuid.UUID] = {}
         for db_chunk, enriched_child in zip(db_chunks, enriched_children):
             db_chunk.context_prefix = enriched_child.context_prefix
+            chunk_id_map[id(enriched_child)] = db_chunk.id
 
         # Generate table aliases
         table_aliases = await generate_table_aliases(enriched_groups)
         for alias_data in table_aliases:
             alias_record = ChunkAlias(
-                chunk_id=(
-                    alias_data["chunk_id"]
-                    if "chunk_id" in alias_data
-                    else None
-                ),
+                chunk_id=chunk_id_map[id(alias_data["chunk"])],
                 file_id=file.id,
                 content=alias_data["question"],
                 token_count=count_tokens(alias_data["question"]),
