@@ -1,4 +1,4 @@
-"""E2E test: PDF upload → DocAI chunking → Baseten enrichment → Voyage embedding.
+"""E2E test: PDF upload → DocAI chunking → Gemini enrichment → Voyage embedding.
 
 Requires real API keys in .env, gcloud auth, and dev DB on port 5433.
 
@@ -84,7 +84,7 @@ async def test_pdf_upload_enrichment_and_embedding(
     text_chunks = [c for c in chunks if c[2] == "text"]
     assert len(text_chunks) > 0, "No text chunks found"
     enriched = [c for c in text_chunks if c[1] and len(c[1]) > 0]
-    assert len(enriched) > 0, f"No chunks have context_prefix. Enrichment (Baseten/Gemma 4) may have failed."
+    assert len(enriched) > 0, f"No chunks have context_prefix. Enrichment (Gemini 2.5 Flash) may have failed."
     assert len(enriched) == len(text_chunks), (
         f"Only {len(enriched)}/{len(text_chunks)} text chunks have context_prefix"
     )

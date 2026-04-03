@@ -46,15 +46,15 @@ spec:
                 secretKeyRef:
                   key: latest
                   name: agentdrive-cohere-api-key
-            - name: BASETEN_API_KEY
+            - name: ENRICHMENT_API_KEY
               valueFrom:
                 secretKeyRef:
                   key: latest
-                  name: agentdrive-baseten-api-key
-            - name: BASETEN_BASE_URL
-              value: "https://model-wx41ye7q.api.baseten.co/environments/production/sync/v1"
-            - name: BASETEN_MODEL
-              value: "google/gemma-4-26B-A4B-it"
+                  name: agentdrive-enrichment-api-key
+            - name: ENRICHMENT_BASE_URL
+              value: "https://generativelanguage.googleapis.com/v1beta/openai/"
+            - name: ENRICHMENT_MODEL
+              value: "gemini-2.5-flash"
             - name: WORKOS_API_KEY
               valueFrom:
                 secretKeyRef:
