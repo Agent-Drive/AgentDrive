@@ -43,6 +43,17 @@ Here is the chunk we want to situate:
 </chunk>
 Please give a short succinct context to situate this chunk within the overall document for the purposes of improving search retrieval of the chunk. Answer only with the succinct context and nothing else."""
 
+GROUP_SUMMARY_PROMPT = """You are summarizing section {group_index} of {total_groups} of a larger document. Produce:
+1. A summary of this section (2-3 sentences)
+2. section_summaries (a list of objects with "heading" and "summary" for each major section within this portion)
+
+<document_section>
+{group_text}
+</document_section>
+
+Return valid JSON with this exact structure:
+{{"summary": "...", "section_summaries": [{{"heading": "...", "summary": "..."}}]}}"""
+
 
 class EnrichmentClient:
     def __init__(self) -> None:
@@ -89,6 +100,32 @@ class EnrichmentClient:
         except Exception as e:
             logger.warning(f"Summary generation failed: {e}")
             return {"document_summary": "", "section_summaries": []}
+
+    async def generate_group_summary(
+        self, group_text: str, group_index: int, total_groups: int
+    ) -> dict:
+        """Summarize a group of parent chunks (map phase of hierarchical summarization)."""
+        try:
+            response = await self._client.chat.completions.create(
+                model=settings.enrichment_model,
+                max_tokens=16384,
+                response_format={"type": "json_object"},
+                messages=[
+                    {
+                        "role": "user",
+                        "content": GROUP_SUMMARY_PROMPT.format(
+                            group_text=group_text,
+                            group_index=group_index,
+                            total_groups=total_groups,
+                        ),
+                    }
+                ],
+            )
+            text = (response.choices[0].message.content or "").strip()
+            return json.loads(text)
+        except Exception as e:
+            logger.warning(f"Group summary generation failed: {e}")
+            return {"summary": "", "section_summaries": []}
 
     async def generate_context_with_summary(
         self,

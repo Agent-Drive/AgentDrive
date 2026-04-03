@@ -163,3 +163,40 @@ async def test_generate_summary_fallback_on_error(mock_openai_cls):
     result = await client.generate_summary("doc text")
 
     assert result == {"document_summary": "", "section_summaries": []}
+
+
+@pytest.mark.asyncio
+@patch("agentdrive.enrichment.client.openai.AsyncOpenAI")
+async def test_generate_group_summary(mock_openai_cls):
+    mock_client = AsyncMock()
+    mock_client.chat.completions.create.return_value = _mock_chat_response(
+        '{"summary": "This section covers revenue.", "section_summaries": [{"heading": "Q3 Revenue", "summary": "Revenue grew 34%."}]}'
+    )
+    mock_openai_cls.return_value = mock_client
+
+    client = EnrichmentClient()
+    result = await client.generate_group_summary(
+        group_text="Q3 revenue reached $4.2M, up 34% YoY...",
+        group_index=1,
+        total_groups=4,
+    )
+
+    assert result["summary"] == "This section covers revenue."
+    assert len(result["section_summaries"]) == 1
+    call_args = mock_client.chat.completions.create.call_args
+    assert call_args[1]["response_format"] == {"type": "json_object"}
+    content = call_args[1]["messages"][0]["content"]
+    assert "section 1 of 4" in content
+
+
+@pytest.mark.asyncio
+@patch("agentdrive.enrichment.client.openai.AsyncOpenAI")
+async def test_generate_group_summary_fallback_on_error(mock_openai_cls):
+    mock_client = AsyncMock()
+    mock_client.chat.completions.create.side_effect = Exception("API error")
+    mock_openai_cls.return_value = mock_client
+
+    client = EnrichmentClient()
+    result = await client.generate_group_summary("text", 1, 4)
+
+    assert result == {"summary": "", "section_summaries": []}
