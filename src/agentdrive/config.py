@@ -20,9 +20,9 @@ class Settings(BaseSettings):
     reaper_threshold_minutes: int = 10
     max_retries: int = 3
 
-    docai_processor_id: str = ""
+    docai_processor_id: str = "56e834cb46b24724"
     docai_location: str = "us"
-    gcp_project_id: str = ""
+    gcp_project_id: str = "agent-drive-491013"
     docai_batch_timeout_seconds: int = 1800
     max_signed_upload_bytes: int = 5 * 1024 * 1024 * 1024  # 5GB
     signed_url_expiry_hours: int = 1
