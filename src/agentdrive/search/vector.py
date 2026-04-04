@@ -21,6 +21,7 @@ async def vector_search(
     tenant_id: uuid.UUID,
     top_k: int = 50,
     content_types: list[str] | None = None,
+    kb_id: uuid.UUID | None = None,
 ) -> list[SearchResult]:
     embedding_str = "[" + ",".join(str(v) for v in query_embedding) + "]"
 
@@ -30,6 +31,10 @@ async def vector_search(
     if content_types:
         where_clauses.append("c.content_type = ANY(:content_types)")
         params["content_types"] = content_types
+
+    if kb_id:
+        where_clauses.append("EXISTS (SELECT 1 FROM knowledge_base_files kbf WHERE kbf.file_id = f.id AND kbf.knowledge_base_id = :kb_id)")
+        params["kb_id"] = str(kb_id)
 
     where = " AND ".join(where_clauses)
 
@@ -90,3 +95,37 @@ async def vector_search(
     results = results[:top_k]
 
     return results
+
+
+async def article_vector_search(
+    query_embedding: list[float],
+    session: AsyncSession,
+    kb_id: uuid.UUID,
+    top_k: int = 50,
+) -> list[SearchResult]:
+    embedding_str = "[" + ",".join(str(v) for v in query_embedding) + "]"
+    sql = text("""
+        SELECT a.id, a.title, a.content, a.article_type, a.category,
+               a.token_count, a.knowledge_base_id,
+               a.embedding <=> CAST(:embedding AS halfvec(256)) AS distance
+        FROM articles a
+        WHERE a.knowledge_base_id = :kb_id AND a.embedding IS NOT NULL AND a.status = 'published'
+        ORDER BY distance
+        LIMIT :top_k
+    """)
+    result = await session.execute(
+        sql, {"embedding": embedding_str, "kb_id": str(kb_id), "top_k": top_k},
+    )
+    return [
+        SearchResult(
+            chunk_id=row.id,
+            file_id=row.knowledge_base_id,
+            content=row.content,
+            context_prefix=row.title,
+            token_count=row.token_count,
+            content_type=row.article_type,
+            score=1.0 - row.distance,
+            metadata={"result_type": "article", "category": row.category, "title": row.title},
+        )
+        for row in result.fetchall()
+    ]

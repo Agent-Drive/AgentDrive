@@ -7,12 +7,19 @@ from google.cloud import storage as gcs
 
 from agentdrive.config import settings
 
-storage_client = gcs.Client()
+_storage_client = None
+
+
+def _get_storage_client() -> gcs.Client:
+    global _storage_client
+    if _storage_client is None:
+        _storage_client = gcs.Client()
+    return _storage_client
 
 
 class StorageService:
     def __init__(self) -> None:
-        self._bucket = storage_client.bucket(settings.gcs_bucket)
+        self._bucket = _get_storage_client().bucket(settings.gcs_bucket)
 
     def generate_path(self, tenant_id: uuid.UUID, file_id: uuid.UUID, filename: str) -> str:
         return f"tenants/{tenant_id}/files/{file_id}/{filename}"

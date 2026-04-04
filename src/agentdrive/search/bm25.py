@@ -16,6 +16,7 @@ async def bm25_search(
     session: AsyncSession,
     tenant_id: uuid.UUID,
     top_k: int = 50,
+    kb_id: uuid.UUID | None = None,
 ) -> list[SearchResult]:
     where_clauses = [
         "f.tenant_id = :tenant_id",
@@ -23,6 +24,10 @@ async def bm25_search(
         "to_tsvector('english', c.content) @@ plainto_tsquery('english', :query)",
     ]
     params: dict = {"tenant_id": str(tenant_id), "query": query, "top_k": top_k}
+
+    if kb_id:
+        where_clauses.append("EXISTS (SELECT 1 FROM knowledge_base_files kbf WHERE kbf.file_id = f.id AND kbf.knowledge_base_id = :kb_id)")
+        params["kb_id"] = str(kb_id)
 
     where = " AND ".join(where_clauses)
 
@@ -48,4 +53,38 @@ async def bm25_search(
             metadata=row.metadata or {}, parent_chunk_id=row.parent_chunk_id,
         )
         for row in rows
+    ]
+
+
+async def article_bm25_search(
+    query: str,
+    session: AsyncSession,
+    kb_id: uuid.UUID,
+    top_k: int = 50,
+) -> list[SearchResult]:
+    sql = text("""
+        SELECT a.id, a.title, a.content, a.article_type, a.category,
+               a.token_count, a.knowledge_base_id,
+               ts_rank(to_tsvector('english', a.content), plainto_tsquery('english', :query)) AS rank
+        FROM articles a
+        WHERE a.knowledge_base_id = :kb_id AND a.status = 'published'
+          AND to_tsvector('english', a.content) @@ plainto_tsquery('english', :query)
+        ORDER BY rank DESC
+        LIMIT :top_k
+    """)
+    result = await session.execute(
+        sql, {"query": query, "kb_id": str(kb_id), "top_k": top_k},
+    )
+    return [
+        SearchResult(
+            chunk_id=row.id,
+            file_id=row.knowledge_base_id,
+            content=row.content,
+            context_prefix=row.title,
+            token_count=row.token_count,
+            content_type=row.article_type,
+            score=float(row.rank),
+            metadata={"result_type": "article", "category": row.category, "title": row.title},
+        )
+        for row in result.fetchall()
     ]

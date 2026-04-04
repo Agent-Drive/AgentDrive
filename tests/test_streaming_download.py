@@ -17,13 +17,15 @@ from agentdrive.services.storage import StorageService
 # ---------------------------------------------------------------------------
 
 
-@patch("agentdrive.services.storage.storage_client")
+@patch("agentdrive.services.storage._get_storage_client")
 @patch("agentdrive.services.storage.settings")
-def test_download_to_tempfile(mock_settings, mock_storage_client):
+def test_download_to_tempfile(mock_settings, mock_get_client):
     """download_to_tempfile returns a path with correct extension and file content."""
     mock_settings.gcs_bucket = "test-bucket"
+    mock_client = MagicMock()
+    mock_get_client.return_value = mock_client
     mock_bucket = MagicMock()
-    mock_storage_client.bucket.return_value = mock_bucket
+    mock_client.bucket.return_value = mock_bucket
 
     mock_blob = MagicMock()
     mock_blob.download_to_filename = MagicMock(
@@ -45,13 +47,15 @@ def test_download_to_tempfile(mock_settings, mock_storage_client):
         result.unlink(missing_ok=True)
 
 
-@patch("agentdrive.services.storage.storage_client")
+@patch("agentdrive.services.storage._get_storage_client")
 @patch("agentdrive.services.storage.settings")
-def test_download_to_tempfile_preserves_extension(mock_settings, mock_storage_client):
+def test_download_to_tempfile_preserves_extension(mock_settings, mock_get_client):
     """download_to_tempfile preserves .xlsx extension."""
     mock_settings.gcs_bucket = "test-bucket"
+    mock_client = MagicMock()
+    mock_get_client.return_value = mock_client
     mock_bucket = MagicMock()
-    mock_storage_client.bucket.return_value = mock_bucket
+    mock_client.bucket.return_value = mock_bucket
 
     mock_blob = MagicMock()
     mock_blob.download_to_filename = MagicMock()
@@ -142,15 +146,17 @@ def test_pdf_chunker_chunk_file_uses_file_path(mock_settings, tmp_path):
 # ---------------------------------------------------------------------------
 
 
-@patch("agentdrive.services.storage.storage_client")
+@patch("agentdrive.services.storage._get_storage_client")
 @patch("agentdrive.services.storage.settings")
-def test_download_stream_yields_chunks(mock_settings, mock_storage_client):
+def test_download_stream_yields_chunks(mock_settings, mock_get_client):
     """download_stream yields file content in chunks from GCS."""
     import io
 
     mock_settings.gcs_bucket = "test-bucket"
+    mock_client = MagicMock()
+    mock_get_client.return_value = mock_client
     mock_bucket = MagicMock()
-    mock_storage_client.bucket.return_value = mock_bucket
+    mock_client.bucket.return_value = mock_bucket
 
     content = b"A" * 8192 + b"B" * 4096  # 12KB total
     fake_blob = MagicMock()
@@ -165,13 +171,15 @@ def test_download_stream_yields_chunks(mock_settings, mock_storage_client):
     assert len(chunks) == 3  # 4096 + 4096 + 4096
 
 
-@patch("agentdrive.services.storage.storage_client")
+@patch("agentdrive.services.storage._get_storage_client")
 @patch("agentdrive.services.storage.settings")
-def test_download_stream_raises_on_missing_blob(mock_settings, mock_storage_client):
+def test_download_stream_raises_on_missing_blob(mock_settings, mock_get_client):
     """download_stream raises FileNotFoundError when blob does not exist."""
     mock_settings.gcs_bucket = "test-bucket"
+    mock_client = MagicMock()
+    mock_get_client.return_value = mock_client
     mock_bucket = MagicMock()
-    mock_storage_client.bucket.return_value = mock_bucket
+    mock_client.bucket.return_value = mock_bucket
 
     fake_blob = MagicMock()
     fake_blob.exists.return_value = False

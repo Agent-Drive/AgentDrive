@@ -8,7 +8,9 @@ def test_list_blobs():
     mock_blob1.name = "tmp/docai/abc/output-0.json"
     mock_blob2 = MagicMock()
     mock_blob2.name = "tmp/docai/abc/output-1.json"
-    with patch("agentdrive.services.storage.storage_client") as mock_client:
+    with patch("agentdrive.services.storage._get_storage_client") as mock_fn:
+        mock_client = MagicMock()
+        mock_fn.return_value = mock_client
         mock_client.bucket.return_value = MagicMock()
         service = StorageService()
         service._bucket.list_blobs.return_value = [mock_blob1, mock_blob2]
@@ -19,7 +21,9 @@ def test_list_blobs():
 def test_delete_prefix():
     mock_blob1 = MagicMock()
     mock_blob2 = MagicMock()
-    with patch("agentdrive.services.storage.storage_client") as mock_client:
+    with patch("agentdrive.services.storage._get_storage_client") as mock_fn:
+        mock_client = MagicMock()
+        mock_fn.return_value = mock_client
         mock_client.bucket.return_value = MagicMock()
         service = StorageService()
         service._bucket.list_blobs.return_value = [mock_blob1, mock_blob2]
@@ -29,24 +33,28 @@ def test_delete_prefix():
 
 
 def test_docai_output_prefix():
-    with patch("agentdrive.services.storage.storage_client"):
+    with patch("agentdrive.services.storage._get_storage_client"):
         service = StorageService()
         assert service.docai_output_prefix("abc-123") == "tmp/docai/abc-123/"
 
 
 def test_gcs_uri():
-    with patch("agentdrive.services.storage.storage_client") as mock_client:
+    with patch("agentdrive.services.storage._get_storage_client") as mock_fn:
+        mock_client = MagicMock()
         mock_bucket = MagicMock()
         mock_bucket.name = "my-bucket"
         mock_client.bucket.return_value = mock_bucket
+        mock_fn.return_value = mock_client
         service = StorageService()
         assert service.gcs_uri("some/path.pdf") == "gs://my-bucket/some/path.pdf"
 
 
 def test_upload_bytes():
-    with patch("agentdrive.services.storage.storage_client") as mock_client:
+    with patch("agentdrive.services.storage._get_storage_client") as mock_fn:
+        mock_client = MagicMock()
         mock_bucket = MagicMock()
         mock_client.bucket.return_value = mock_bucket
+        mock_fn.return_value = mock_client
         mock_blob = MagicMock()
         mock_bucket.blob.return_value = mock_blob
         service = StorageService()

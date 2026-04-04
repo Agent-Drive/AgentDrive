@@ -6,7 +6,9 @@ from agentdrive.services.storage import StorageService
 
 @pytest.fixture
 def storage():
-    with patch("agentdrive.services.storage.storage_client") as mock_client:
+    with patch("agentdrive.services.storage._get_storage_client") as mock_fn:
+        mock_client = MagicMock()
+        mock_fn.return_value = mock_client
         mock_bucket = MagicMock()
         mock_client.bucket.return_value = mock_bucket
         svc = StorageService()

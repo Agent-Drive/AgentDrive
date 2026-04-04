@@ -27,3 +27,31 @@ class ContentType(str, enum.Enum):
     NOTEBOOK = "notebook"
     IMAGE = "image"
     TEXT = "text"
+
+
+class KBStatus(str, enum.Enum):
+    ACTIVE = "active"
+    COMPILING = "compiling"
+    ERROR = "error"
+
+
+class ArticleType(str, enum.Enum):
+    CONCEPT = "concept"
+    SUMMARY = "summary"
+    CONNECTION = "connection"
+    QUESTION = "question"
+    DERIVED = "derived"
+    MANUAL = "manual"
+
+
+class ArticleStatus(str, enum.Enum):
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    STALE = "stale"
+
+
+class LinkType(str, enum.Enum):
+    RELATED = "related"
+    CONTRADICTS = "contradicts"
+    EXTENDS = "extends"
+    PREREQUISITE = "prerequisite"
