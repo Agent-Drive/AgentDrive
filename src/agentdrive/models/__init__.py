@@ -1,4 +1,10 @@
-from agentdrive.knowledge.models import KnowledgeBase, KnowledgeBaseFile
+from agentdrive.knowledge.models import (
+    Article,
+    ArticleLink,
+    ArticleSource,
+    KnowledgeBase,
+    KnowledgeBaseFile,
+)
 from agentdrive.models.api_key import ApiKey
 from agentdrive.models.base import Base
 from agentdrive.models.chunk import Chunk, ParentChunk
@@ -19,6 +25,9 @@ from agentdrive.models.types import (
 
 __all__ = [
     "ApiKey",
+    "Article",
+    "ArticleLink",
+    "ArticleSource",
     "ArticleStatus",
     "ArticleType",
     "Base",
