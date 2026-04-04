@@ -15,6 +15,7 @@ from agentdrive.knowledge.schemas import (
     ArticleListResponse,
     ArticleResponse,
     DeriveArticleRequest,
+    HealthCheckResponse,
     KBAddFilesRequest,
     KBCreateRequest,
     KBListResponse,
@@ -23,6 +24,7 @@ from agentdrive.knowledge.schemas import (
     KBSearchRequest,
     KBSearchResponse,
     KBSearchResultResponse,
+    RepairRequest,
 )
 from agentdrive.knowledge.service import KBService
 from agentdrive.models.tenant import Tenant
@@ -283,3 +285,38 @@ async def search_kb_endpoint(
         query_tokens=result["query_tokens"],
         search_time_ms=result["search_time_ms"],
     )
+
+
+@router.post("/{kb_id}/health-check", response_model=HealthCheckResponse)
+async def health_check_endpoint(
+    kb_id: uuid.UUID,
+    quick: bool = False,
+    tenant: Tenant = Depends(get_current_tenant),
+    session: AsyncSession = Depends(get_session),
+):
+    from agentdrive.knowledge.health.checker import run_health_check
+
+    svc = KBService(session)
+    kb = await svc.get(tenant.id, kb_id)
+    if not kb:
+        raise HTTPException(status_code=404, detail="Knowledge base not found")
+    report = await run_health_check(kb_id, session, quick=quick)
+    return HealthCheckResponse(**report)
+
+
+@router.post("/{kb_id}/repair", status_code=200)
+async def repair_endpoint(
+    kb_id: uuid.UUID,
+    body: RepairRequest,
+    tenant: Tenant = Depends(get_current_tenant),
+    session: AsyncSession = Depends(get_session),
+):
+    from agentdrive.knowledge.health.repair import repair_kb
+
+    svc = KBService(session)
+    kb = await svc.get(tenant.id, kb_id)
+    if not kb:
+        raise HTTPException(status_code=404, detail="Knowledge base not found")
+    result = await repair_kb(kb_id, session, body.apply)
+    await session.commit()
+    return result
