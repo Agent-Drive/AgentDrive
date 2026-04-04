@@ -14,7 +14,7 @@ from agentdrive.knowledge.models import (
 )
 from agentdrive.models.chunk import Chunk
 from agentdrive.models.file import File
-from agentdrive.models.types import ArticleStatus, KBStatus
+from agentdrive.models.types import ArticleStatus, ArticleType, KBStatus
 
 logger = logging.getLogger(__name__)
 
@@ -232,6 +232,49 @@ class KBService:
             )
         )
         return result.scalar_one()
+
+    async def derive_article(
+        self,
+        tenant_id: uuid.UUID,
+        kb_id: uuid.UUID,
+        title: str,
+        content: str,
+        source_ids: list[uuid.UUID] | None = None,
+    ) -> Article:
+        """Create a derived article from Q&A or analysis output and file it into a KB."""
+        kb = await self.get(tenant_id, kb_id)
+        if not kb:
+            raise ValueError("Knowledge base not found")
+
+        max_tokens = (kb.config or {}).get("max_article_tokens", 8192)
+        token_count = len(content.split())
+        if token_count > max_tokens:
+            raise ValueError(
+                f"Content ({token_count} tokens) exceeds max_article_tokens ({max_tokens})"
+            )
+
+        article = Article(
+            knowledge_base_id=kb_id,
+            title=title,
+            content=content,
+            article_type=ArticleType.DERIVED,
+            status=ArticleStatus.PUBLISHED,
+            token_count=token_count,
+        )
+        self.session.add(article)
+        await self.session.flush()
+
+        if source_ids:
+            for sid in source_ids:
+                chunk = await self.session.get(Chunk, sid)
+                if chunk:
+                    source = ArticleSource(
+                        article_id=article.id, chunk_id=sid, excerpt=""
+                    )
+                    self.session.add(source)
+
+        await self.session.flush()
+        return article
 
     async def get_article_count(self, kb_id: uuid.UUID) -> int:
         """Count articles in a knowledge base."""

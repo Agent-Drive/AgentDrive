@@ -161,3 +161,24 @@ async def test_list_articles_empty(authed_client):
     data = response.json()
     assert data["total"] == 0
     assert data["articles"] == []
+
+
+@pytest.mark.asyncio
+async def test_derive_article_endpoint(authed_client, db_session):
+    client, tenant = authed_client
+    create_resp = await client.post(
+        "/v1/knowledge-bases", json={"name": "Test KB"}
+    )
+    kb_id = create_resp.json()["id"]
+
+    resp = await client.post(
+        f"/v1/knowledge-bases/{kb_id}/articles/derived",
+        json={
+            "title": "My Report",
+            "content": "# Report\n\nSome analysis...",
+        },
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["title"] == "My Report"
+    assert data["article_type"] == "derived"

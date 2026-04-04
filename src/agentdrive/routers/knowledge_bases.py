@@ -14,6 +14,7 @@ from agentdrive.knowledge.models import Article, KnowledgeBase
 from agentdrive.knowledge.schemas import (
     ArticleListResponse,
     ArticleResponse,
+    DeriveArticleRequest,
     KBAddFilesRequest,
     KBCreateRequest,
     KBListResponse,
@@ -225,6 +226,34 @@ async def compile_kb_endpoint(
 
     asyncio.create_task(compile_kb(kb_id, tenant.id, force=force))
     return {"status": "compilation_started", "kb_id": str(kb_id)}
+
+
+@router.post(
+    "/{kb_id}/articles/derived", status_code=201, response_model=ArticleResponse
+)
+async def derive_article_endpoint(
+    kb_id: uuid.UUID,
+    body: DeriveArticleRequest,
+    tenant: Tenant = Depends(get_current_tenant),
+    session: AsyncSession = Depends(get_session),
+):
+    svc = KBService(session)
+    try:
+        article = await svc.derive_article(
+            tenant.id, kb_id, body.title, body.content, body.source_ids
+        )
+        await session.commit()
+
+        # Re-fetch with sources eagerly loaded to avoid lazy-load in async
+        result = await session.execute(
+            select(Article)
+            .options(selectinload(Article.sources))
+            .where(Article.id == article.id)
+        )
+        article = result.scalar_one()
+        return ArticleResponse.model_validate(article)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/{kb_id}/search", response_model=KBSearchResponse)

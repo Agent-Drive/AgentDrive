@@ -210,3 +210,39 @@ async def test_remove_files_marks_articles_stale(service, tenant, ready_file, db
         )
     )
     assert kbf_result.scalar_one_or_none() is None
+
+
+@pytest.mark.asyncio
+async def test_derive_article(db_session, tenant):
+    svc = KBService(db_session)
+    kb = await svc.create(tenant.id, name="Test KB")
+    await db_session.commit()
+
+    article = await svc.derive_article(
+        tenant_id=tenant.id,
+        kb_id=kb.id,
+        title="My Analysis",
+        content="# Analysis\n\nFindings here...",
+        source_ids=[],
+    )
+    assert article.article_type == ArticleType.DERIVED
+    assert article.title == "My Analysis"
+    assert article.status == ArticleStatus.PUBLISHED
+
+
+@pytest.mark.asyncio
+async def test_derive_article_rejects_too_long(db_session, tenant):
+    svc = KBService(db_session)
+    kb = await svc.create(
+        tenant.id, name="Test KB 2", config={"max_article_tokens": 10}
+    )
+    await db_session.commit()
+
+    with pytest.raises(ValueError, match="exceeds"):
+        await svc.derive_article(
+            tenant_id=tenant.id,
+            kb_id=kb.id,
+            title="Big Article",
+            content="word " * 1000,
+            source_ids=[],
+        )
