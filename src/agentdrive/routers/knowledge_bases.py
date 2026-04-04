@@ -19,11 +19,24 @@ from agentdrive.knowledge.schemas import (
     KBListResponse,
     KBRemoveFilesRequest,
     KBResponse,
+    KBSearchRequest,
+    KBSearchResponse,
+    KBSearchResultResponse,
 )
 from agentdrive.knowledge.service import KBService
 from agentdrive.models.tenant import Tenant
+from agentdrive.search.engine import SearchEngine
 
 router = APIRouter(prefix="/v1/knowledge-bases", tags=["knowledge-bases"])
+
+_engine = None
+
+
+def _get_engine():
+    global _engine
+    if _engine is None:
+        _engine = SearchEngine()
+    return _engine
 
 
 async def _build_kb_response(svc: KBService, kb: KnowledgeBase) -> KBResponse:
@@ -212,3 +225,32 @@ async def compile_kb_endpoint(
 
     asyncio.create_task(compile_kb(kb_id, tenant.id, force=force))
     return {"status": "compilation_started", "kb_id": str(kb_id)}
+
+
+@router.post("/{kb_id}/search", response_model=KBSearchResponse)
+async def search_kb_endpoint(
+    kb_id: uuid.UUID,
+    body: KBSearchRequest,
+    tenant: Tenant = Depends(get_current_tenant),
+    session: AsyncSession = Depends(get_session),
+):
+    svc = KBService(session)
+    kb = await svc.get(tenant.id, kb_id)
+    if not kb:
+        raise HTTPException(status_code=404, detail="Knowledge base not found")
+
+    engine = _get_engine()
+    result = await engine.search_kb(
+        query=body.query,
+        session=session,
+        tenant_id=tenant.id,
+        kb_id=kb_id,
+        top_k=body.top_k,
+        articles_only=body.articles_only,
+        content_types=body.content_types,
+    )
+    return KBSearchResponse(
+        results=[KBSearchResultResponse(**r) for r in result["results"]],
+        query_tokens=result["query_tokens"],
+        search_time_ms=result["search_time_ms"],
+    )
