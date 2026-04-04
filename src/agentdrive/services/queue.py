@@ -43,6 +43,36 @@ async def _worker(worker_id: int) -> None:
                         process_file(file_id, session),
                         timeout=settings.ingestion_timeout_seconds,
                     )
+
+                    # Trigger KB compilation if file belongs to any knowledge bases
+                    try:
+                        from sqlalchemy import select as sa_select
+
+                        from agentdrive.knowledge.models import KnowledgeBaseFile
+
+                        kb_result = await session.execute(
+                            sa_select(KnowledgeBaseFile.knowledge_base_id).where(
+                                KnowledgeBaseFile.file_id == file_id
+                            )
+                        )
+                        kb_ids = [row[0] for row in kb_result.all()]
+                        if kb_ids:
+                            from agentdrive.knowledge.compilation.pipeline import (
+                                compile_kb,
+                            )
+
+                            for kb_id in kb_ids:
+                                asyncio.create_task(
+                                    compile_kb(kb_id, file.tenant_id)
+                                )
+                                logger.info(
+                                    f"Triggered compilation for KB {kb_id} after file {file_id} processed"
+                                )
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to trigger KB compilation for file {file_id}: {e}"
+                        )
+
                 except asyncio.TimeoutError:
                     await session.rollback()
                     file = await session.get(File, file_id)
