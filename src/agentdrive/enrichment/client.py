@@ -219,3 +219,112 @@ class EnrichmentClient:
         except Exception as e:
             logger.warning(f"Table question generation failed: {e}")
             return []
+
+    async def extract_concepts(
+        self,
+        summaries: str,
+        existing_titles: list[str],
+    ) -> list[dict]:
+        """Phase 5a: Extract key concepts from document summaries."""
+        existing = ", ".join(existing_titles) if existing_titles else "None"
+        prompt = f"""Analyze these document summaries and identify the key concepts, topics, and ideas that should have their own knowledge base article.
+
+Existing articles (do not duplicate): {existing}
+
+Document summaries:
+{summaries}
+
+Return a JSON object with a "concepts" key containing an array. For each concept:
+{{"concepts": [{{"concept_name": "...", "description": "one sentence description", "is_new": true}}]}}
+
+For existing concepts needing update, set is_new to false and include existing_article_title.
+If no concepts found, return {{"concepts": []}}.
+"""
+        try:
+            response = await self._client.chat.completions.create(
+                model=settings.enrichment_model,
+                max_tokens=4096,
+                response_format={"type": "json_object"},
+                messages=[{"role": "user", "content": prompt}],
+            )
+            text = (response.choices[0].message.content or "").strip()
+            result = json.loads(text)
+            return result.get("concepts", result if isinstance(result, list) else [])
+        except Exception as e:
+            logger.warning(f"Concept extraction failed: {e}")
+            return []
+
+    async def generate_article(
+        self,
+        concept_name: str,
+        concept_description: str,
+        relevant_chunks: list[dict],
+        existing_article: str | None = None,
+    ) -> dict:
+        """Phase 5b: Generate or update an article for a concept."""
+        chunks_text = "\n\n---\n\n".join(
+            f"[Chunk {c['chunk_id']}]\n{c['content']}" for c in relevant_chunks
+        )
+        update_ctx = ""
+        if existing_article:
+            update_ctx = (
+                f"\n\nExisting article to update:\n{existing_article}\n\n"
+                "Incorporate new information while preserving accurate existing content."
+            )
+
+        prompt = f"""Write a comprehensive knowledge base article about: {concept_name}
+Description: {concept_description}
+{update_ctx}
+Source material:
+{chunks_text}
+
+Return valid JSON:
+{{"title": "...", "content": "markdown article body", "category": "topic category", "source_refs": [{{"chunk_id": "...", "excerpt": "relevant excerpt from chunk"}}]}}
+
+Every claim must be traceable to a source chunk. source_refs must reference actual chunk IDs from above.
+"""
+        try:
+            response = await self._client.chat.completions.create(
+                model=settings.enrichment_model,
+                max_tokens=8192,
+                response_format={"type": "json_object"},
+                messages=[{"role": "user", "content": prompt}],
+            )
+            text = (response.choices[0].message.content or "").strip()
+            return json.loads(text)
+        except Exception as e:
+            logger.warning(f"Article generation failed for '{concept_name}': {e}")
+            return {"title": concept_name, "content": "", "category": "", "source_refs": []}
+
+    async def discover_connections(
+        self,
+        article_summaries: list[dict],
+    ) -> list[dict]:
+        """Phase 5c: Discover connections between articles."""
+        summaries_text = "\n".join(
+            f"- {a['title']}: {a['summary']}" for a in article_summaries
+        )
+        prompt = f"""Analyze these knowledge base articles and identify non-obvious connections.
+
+Articles:
+{summaries_text}
+
+Return a JSON object with a "connections" key:
+{{"connections": [{{"source_title": "...", "target_title": "...", "link_type": "related|contradicts|extends|prerequisite", "rationale": "brief explanation"}}]}}
+
+Link types: related (connected, no dependency), contradicts (conflicting info), extends (builds upon), prerequisite (required knowledge).
+Only significant, non-obvious connections. Return {{"connections": []}} if none.
+"""
+        try:
+            response = await self._client.chat.completions.create(
+                model=settings.enrichment_model,
+                max_tokens=4096,
+                response_format={"type": "json_object"},
+                messages=[{"role": "user", "content": prompt}],
+            )
+            text = (response.choices[0].message.content or "").strip()
+            result = json.loads(text)
+            return result.get("connections", result if isinstance(result, list) else [])
+        except Exception as e:
+            logger.warning(f"Connection discovery failed: {e}")
+            return []
