@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from typing import Optional
 
@@ -8,6 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from agentdrive.db.session import get_session
 from agentdrive.dependencies import get_current_tenant
+from agentdrive.knowledge.compilation.pipeline import compile_kb
 from agentdrive.knowledge.models import Article, KnowledgeBase
 from agentdrive.knowledge.schemas import (
     ArticleListResponse,
@@ -194,3 +196,19 @@ async def get_article(
     if article is None:
         raise HTTPException(status_code=404, detail="Article not found")
     return ArticleResponse.model_validate(article)
+
+
+@router.post("/{kb_id}/compile", status_code=202)
+async def compile_kb_endpoint(
+    kb_id: uuid.UUID,
+    force: bool = False,
+    tenant: Tenant = Depends(get_current_tenant),
+    session: AsyncSession = Depends(get_session),
+):
+    svc = KBService(session)
+    kb = await svc.get(tenant.id, kb_id)
+    if not kb:
+        raise HTTPException(status_code=404, detail="Knowledge base not found")
+
+    asyncio.create_task(compile_kb(kb_id, tenant.id, force=force))
+    return {"status": "compilation_started", "kb_id": str(kb_id)}
