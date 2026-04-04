@@ -42,7 +42,8 @@ def mock_enrichment_and_embedding():
          patch("agentdrive.services.ingest.generate_document_summary", side_effect=_noop_summary), \
          patch("agentdrive.services.ingest.generate_table_aliases", side_effect=_noop_aliases), \
          patch("agentdrive.services.ingest.generate_group_summary", side_effect=_noop_group_summary), \
-         patch("agentdrive.services.ingest.generate_reduce_summary", side_effect=_noop_reduce_summary):
+         patch("agentdrive.services.ingest.generate_reduce_summary", side_effect=_noop_reduce_summary), \
+         patch("agentdrive.knowledge.compilation.pipeline.compile_kb", new_callable=AsyncMock):
         yield
 
 
@@ -53,6 +54,12 @@ async def db_engine():
 
     engine = create_async_engine(TEST_DATABASE_URL, echo=False, pool_size=5)
     async with engine.begin() as conn:
+        # Drop knowledge base tables first (depend on core tables)
+        await conn.execute(sa_text("DROP TABLE IF EXISTS article_links CASCADE"))
+        await conn.execute(sa_text("DROP TABLE IF EXISTS article_sources CASCADE"))
+        await conn.execute(sa_text("DROP TABLE IF EXISTS articles CASCADE"))
+        await conn.execute(sa_text("DROP TABLE IF EXISTS knowledge_base_files CASCADE"))
+        await conn.execute(sa_text("DROP TABLE IF EXISTS knowledge_bases CASCADE"))
         # Drop legacy collections table if it exists (removed from ORM but may linger in DB)
         await conn.execute(sa_text("DROP TABLE IF EXISTS collections CASCADE"))
         await conn.run_sync(Base.metadata.drop_all)
@@ -116,6 +123,63 @@ async def db_engine():
         ))
         await conn.execute(sa_text("ALTER TABLE parent_chunks ADD COLUMN IF NOT EXISTS batch_id uuid REFERENCES file_batches(id)"))
         await conn.execute(sa_text("ALTER TABLE chunks ADD COLUMN IF NOT EXISTS batch_id uuid REFERENCES file_batches(id)"))
+        # -- Knowledge base tables --
+        await conn.execute(sa_text(
+            "CREATE TABLE IF NOT EXISTS knowledge_bases ("
+            "id uuid PRIMARY KEY DEFAULT gen_random_uuid(), "
+            "tenant_id uuid REFERENCES tenants(id) NOT NULL, "
+            "name text NOT NULL, "
+            "description text, "
+            "status text NOT NULL DEFAULT 'active', "
+            "config jsonb DEFAULT '{}', "
+            "created_at timestamptz DEFAULT now(), "
+            "updated_at timestamptz DEFAULT now(), "
+            "UNIQUE (tenant_id, name))"
+        ))
+        await conn.execute(sa_text(
+            "CREATE TABLE IF NOT EXISTS knowledge_base_files ("
+            "knowledge_base_id uuid REFERENCES knowledge_bases(id) ON DELETE CASCADE, "
+            "file_id uuid REFERENCES files(id) ON DELETE CASCADE, "
+            "added_at timestamptz DEFAULT now(), "
+            "PRIMARY KEY (knowledge_base_id, file_id))"
+        ))
+        await conn.execute(sa_text(
+            "CREATE TABLE IF NOT EXISTS articles ("
+            "id uuid PRIMARY KEY DEFAULT gen_random_uuid(), "
+            "knowledge_base_id uuid REFERENCES knowledge_bases(id) ON DELETE CASCADE NOT NULL, "
+            "title text NOT NULL, "
+            "content text NOT NULL, "
+            "article_type text NOT NULL, "
+            "category text, "
+            "status text NOT NULL DEFAULT 'draft', "
+            "token_count integer NOT NULL DEFAULT 0, "
+            "created_at timestamptz DEFAULT now(), "
+            "updated_at timestamptz DEFAULT now())"
+        ))
+        await conn.execute(sa_text(
+            "ALTER TABLE articles ADD COLUMN IF NOT EXISTS embedding halfvec(256)"
+        ))
+        await conn.execute(sa_text(
+            "ALTER TABLE articles ADD COLUMN IF NOT EXISTS embedding_full halfvec(1024)"
+        ))
+        await conn.execute(sa_text(
+            "CREATE TABLE IF NOT EXISTS article_sources ("
+            "id uuid PRIMARY KEY DEFAULT gen_random_uuid(), "
+            "article_id uuid REFERENCES articles(id) ON DELETE CASCADE NOT NULL, "
+            "chunk_id uuid REFERENCES chunks(id) ON DELETE CASCADE NOT NULL, "
+            "excerpt text NOT NULL, "
+            "created_at timestamptz DEFAULT now(), "
+            "updated_at timestamptz DEFAULT now())"
+        ))
+        await conn.execute(sa_text(
+            "CREATE TABLE IF NOT EXISTS article_links ("
+            "id uuid PRIMARY KEY DEFAULT gen_random_uuid(), "
+            "source_article_id uuid REFERENCES articles(id) ON DELETE CASCADE NOT NULL, "
+            "target_article_id uuid REFERENCES articles(id) ON DELETE CASCADE NOT NULL, "
+            "link_type text NOT NULL, "
+            "created_at timestamptz DEFAULT now(), "
+            "updated_at timestamptz DEFAULT now())"
+        ))
         # Add progress columns to files
         for col, default in [
             ('total_batches', '0'), ('completed_batches', '0'),
