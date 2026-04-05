@@ -25,7 +25,20 @@ async def test_list_tools():
     assert "list_api_keys" in tool_names
     assert "revoke_api_key" in tool_names
     assert "download_file" in tool_names
-    assert len(tool_names) == 10
+    assert "create_knowledge_base" in tool_names
+    assert "list_knowledge_bases" in tool_names
+    assert "get_knowledge_base" in tool_names
+    assert "delete_knowledge_base" in tool_names
+    assert "add_files_to_kb" in tool_names
+    assert "remove_files_from_kb" in tool_names
+    assert "search_kb" in tool_names
+    assert "get_article" in tool_names
+    assert "list_articles" in tool_names
+    assert "compile_kb" in tool_names
+    assert "health_check" in tool_names
+    assert "repair_kb" in tool_names
+    assert "derive_article" in tool_names
+    assert len(tool_names) == 23
 
 
 @pytest.mark.asyncio
