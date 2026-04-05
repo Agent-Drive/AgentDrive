@@ -44,7 +44,7 @@ jobs:
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://pypi.org/pypi/agentdrive-mcp/${PKG_VERSION}/json")
           if [ "$STATUS" = "200" ]; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "Version ${PKG_VERSION} already on PyPI — skipping publish"
+            echo "::warning::Version ${PKG_VERSION} already on PyPI — skipping publish. If you changed MCP code, bump the version in packages/mcp/pyproject.toml."
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
             echo "Version ${PKG_VERSION} not on PyPI — will publish"
