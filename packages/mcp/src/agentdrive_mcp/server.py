@@ -40,6 +40,35 @@ def _headers() -> dict:
     return {"Authorization": f"Bearer {AGENT_DRIVE_API_KEY}"}
 
 
+# Cache for tool definitions fetched from API
+_cached_tools: list[Tool] | None = None
+_cached_tool_metadata: list[dict] | None = None
+
+
+async def _fetch_tools_from_api() -> list[dict]:
+    """Fetch tool definitions from the API endpoint.
+    
+    This enables dynamic tool discovery - new tools added to the API
+    will be automatically available in the MCP server without updating
+    the package.
+    """
+    global _cached_tool_metadata
+    if _cached_tool_metadata is not None:
+        return _cached_tool_metadata
+    
+    async with httpx.AsyncClient(base_url=AGENT_DRIVE_URL, timeout=30) as client:
+        try:
+            resp = await client.get("/v1/mcp/tools/full")
+            resp.raise_for_status()
+            data = resp.json()
+            _cached_tool_metadata = data.get("tools", [])
+            return _cached_tool_metadata
+        except Exception as e:
+            print(f"WARNING: Failed to fetch tools from API: {e}", file=sys.stderr)
+            print("Falling back to hardcoded tools (if available)", file=sys.stderr)
+            return []
+
+
 async def _resolve_kb_id(client: httpx.AsyncClient, kb_name_or_id: str) -> str | None:
     """Resolve KB name to ID. Returns ID string or None."""
     try:
@@ -58,142 +87,121 @@ async def _resolve_kb_id(client: httpx.AsyncClient, kb_name_or_id: str) -> str |
 
 @server.list_tools()
 async def list_tools() -> list[Tool]:
-    return [
-        Tool(name="upload_file", description="Upload a file to Agent Drive for processing and semantic indexing.",
-             inputSchema={"type": "object", "properties": {
-                 "path": {"type": "string", "description": "Absolute path to the file on disk"},
-                 "kb": {"type": "string", "description": "Optional knowledge base name or ID to add the file to after upload"},
-             }, "required": ["path"]}),
-        Tool(name="search", description="Search across all uploaded files using natural language. Optionally scope to a knowledge base.",
-             inputSchema={"type": "object", "properties": {
-                 "query": {"type": "string", "description": "Natural language search query"},
-                 "top_k": {"type": "integer", "description": "Number of results (default 5)", "default": 5},
-                 "kb": {"type": "string", "description": "Optional knowledge base name or ID to search within"},
-             }, "required": ["query"]}),
-        Tool(name="get_file_status", description="Check the processing status of an uploaded file.",
-             inputSchema={"type": "object", "properties": {
-                 "file_id": {"type": "string", "description": "File ID returned from upload"},
-             }, "required": ["file_id"]}),
-        Tool(name="list_files", description="List all files uploaded to Agent Drive.",
-             inputSchema={"type": "object", "properties": {}}),
-        Tool(name="delete_file", description="Delete a file and all its chunks from Agent Drive.",
-             inputSchema={"type": "object", "properties": {
-                 "file_id": {"type": "string", "description": "File ID to delete"},
-             }, "required": ["file_id"]}),
-        Tool(name="get_chunk", description="Get a specific chunk by ID with full content and provenance.",
-             inputSchema={"type": "object", "properties": {
-                 "chunk_id": {"type": "string", "description": "Chunk ID"},
-             }, "required": ["chunk_id"]}),
-        Tool(
-            name="download_file",
-            description="Download a file from Agent Drive to local disk. Optionally open it in the native OS application.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "file_id": {
-                        "type": "string",
-                        "description": "UUID of the file to download",
-                    },
-                    "open": {
-                        "type": "boolean",
-                        "description": "Open the file in the native app after download (default: false)",
-                        "default": False,
-                    },
-                },
-                "required": ["file_id"],
-            },
-        ),
-        Tool(name="create_api_key", description="Create a new API key for your tenant.",
-             inputSchema={"type": "object", "properties": {
-                 "name": {"type": "string", "description": "Name for the key (e.g. 'production', 'ci')"},
-             }}),
-        Tool(name="list_api_keys", description="List all API keys for your tenant.",
-             inputSchema={"type": "object", "properties": {}}),
-        Tool(name="revoke_api_key", description="Revoke an API key by ID.",
-             inputSchema={"type": "object", "properties": {
-                 "key_id": {"type": "string", "description": "UUID of the key to revoke"},
-             }, "required": ["key_id"]}),
-        # Knowledge base tools
-        Tool(name="create_knowledge_base", description="Create a new knowledge base to organize files and generate synthesized knowledge articles.",
-             inputSchema={"type": "object", "properties": {
-                 "name": {"type": "string", "description": "Name for the knowledge base"},
-                 "description": {"type": "string", "description": "Optional description"},
-             }, "required": ["name"]}),
-        Tool(name="list_knowledge_bases", description="List all knowledge bases.",
-             inputSchema={"type": "object", "properties": {}}),
-        Tool(name="get_knowledge_base", description="Get details of a knowledge base by name or ID.",
-             inputSchema={"type": "object", "properties": {
-                 "kb": {"type": "string", "description": "Knowledge base name or ID"},
-             }, "required": ["kb"]}),
-        Tool(name="delete_knowledge_base", description="Delete a knowledge base. Articles are deleted but files are kept.",
-             inputSchema={"type": "object", "properties": {
-                 "kb": {"type": "string", "description": "Knowledge base name or ID"},
-             }, "required": ["kb"]}),
-        Tool(name="add_files_to_kb", description="Add files to a knowledge base. Triggers compilation.",
-             inputSchema={"type": "object", "properties": {
-                 "kb": {"type": "string", "description": "Knowledge base name or ID"},
-                 "file_ids": {"type": "array", "items": {"type": "string"}, "description": "List of file IDs to add"},
-             }, "required": ["kb", "file_ids"]}),
-        Tool(name="remove_files_from_kb", description="Remove files from a knowledge base. Affected articles are marked stale.",
-             inputSchema={"type": "object", "properties": {
-                 "kb": {"type": "string", "description": "Knowledge base name or ID"},
-                 "file_ids": {"type": "array", "items": {"type": "string"}, "description": "List of file IDs to remove"},
-             }, "required": ["kb", "file_ids"]}),
-        Tool(name="search_kb", description="Search within a knowledge base. Returns both chunks and synthesized articles.",
-             inputSchema={"type": "object", "properties": {
-                 "kb": {"type": "string", "description": "Knowledge base name or ID"},
-                 "query": {"type": "string", "description": "Search query"},
-                 "top_k": {"type": "integer", "description": "Number of results", "default": 5},
-                 "articles_only": {"type": "boolean", "description": "Only return articles", "default": False},
-             }, "required": ["kb", "query"]}),
-        Tool(name="get_article", description="Get a specific article from a knowledge base.",
-             inputSchema={"type": "object", "properties": {
-                 "kb": {"type": "string", "description": "Knowledge base name or ID"},
-                 "article_id": {"type": "string", "description": "Article ID"},
-             }, "required": ["kb", "article_id"]}),
-        Tool(name="list_articles", description="List articles in a knowledge base with optional filters.",
-             inputSchema={"type": "object", "properties": {
-                 "kb": {"type": "string", "description": "Knowledge base name or ID"},
-                 "category": {"type": "string"},
-                 "article_type": {"type": "string"},
-                 "limit": {"type": "integer", "default": 50},
-                 "offset": {"type": "integer", "default": 0},
-             }, "required": ["kb"]}),
-        Tool(name="compile_kb", description="Trigger compilation of a knowledge base to generate/update articles.",
-             inputSchema={"type": "object", "properties": {
-                 "kb": {"type": "string", "description": "Knowledge base name or ID"},
-                 "force": {"type": "boolean", "description": "Force full recompilation", "default": False},
-             }, "required": ["kb"]}),
-        Tool(name="health_check", description="Run health analysis on a knowledge base.",
-             inputSchema={"type": "object", "properties": {
-                 "kb": {"type": "string", "description": "Knowledge base name or ID"},
-                 "quick": {"type": "boolean", "description": "Quick mode (cheap checks only)", "default": False},
-             }, "required": ["kb"]}),
-        Tool(name="repair_kb", description="Execute repair actions on a knowledge base.",
-             inputSchema={"type": "object", "properties": {
-                 "kb": {"type": "string", "description": "Knowledge base name or ID"},
-                 "apply": {"type": "array", "items": {"type": "string"}, "description": "Actions to apply (e.g. 'stale', 'gaps')"},
-             }, "required": ["kb", "apply"]}),
-        Tool(name="derive_article", description="File a Q&A output back into a knowledge base as a derived article.",
-             inputSchema={"type": "object", "properties": {
-                 "kb": {"type": "string", "description": "Knowledge base name or ID"},
-                 "title": {"type": "string"},
-                 "content": {"type": "string", "description": "Article content in markdown"},
-                 "source_ids": {"type": "array", "items": {"type": "string"}, "description": "Optional chunk/article IDs that informed this"},
-             }, "required": ["kb", "title", "content"]}),
-    ]
+    """Return tool list fetched dynamically from API.
+    
+    This enables automatic discovery of new tools without package updates.
+    """
+    global _cached_tools
+    
+    if _cached_tools is not None:
+        return _cached_tools
+    
+    tool_metadata = await _fetch_tools_from_api()
+    
+    if not tool_metadata:
+        # Fallback: return empty list or hardcoded tools if API is unavailable
+        # In production, you might want to cache the last known good tool list
+        return []
+    
+    # Convert API tool definitions to MCP Tool objects
+    tools = []
+    for tool_def in tool_metadata:
+        tool = Tool(
+            name=tool_def["name"],
+            description=tool_def["description"],
+            inputSchema=tool_def["inputSchema"],
+        )
+        tools.append(tool)
+    
+    _cached_tools = tools
+    return tools
+
+
+async def _dispatch_tool_call(
+    client: httpx.AsyncClient,
+    tool_name: str,
+    arguments: dict,
+) -> str:
+    """Dispatch a tool call to the appropriate API endpoint.
+    
+    Uses the routing metadata from the tool definition to determine
+    the HTTP method, path, and parameter mapping.
+    """
+    tool_metadata = await _fetch_tools_from_api()
+    tool_def = None
+    for t in tool_metadata:
+        if t["name"] == tool_name:
+            tool_def = t
+            break
+    
+    if not tool_def:
+        return f"Unknown tool: {tool_name}"
+    
+    http_config = tool_def.get("_http", {})
+    method = http_config.get("method", "GET")
+    path = http_config.get("path", "")
+    path_template = http_config.get("path_template", "")
+    requires_resolution = http_config.get("requires_resolution", False)
+    
+    # Build request
+    if path_template:
+        # Handle path templates like /v1/knowledge-bases/{kb_id}
+        path = path_template
+        if requires_resolution and "kb" in arguments:
+            # Resolve KB name to ID
+            kb_id = await _resolve_kb_id(client, arguments["kb"])
+            if not kb_id:
+                return f"Knowledge base '{arguments['kb']}' not found"
+            path = path.replace("{kb_id}", kb_id)
+        # Replace other path parameters
+        for key, value in arguments.items():
+            path = path.replace(f"{{{key}}}", str(value))
+    
+    # Make the request
+    try:
+        if method == "GET":
+            resp = await client.get(path)
+        elif method == "POST":
+            # Build request body from arguments
+            body_fields = http_config.get("body_fields", list(arguments.keys()))
+            body = {k: v for k, v in arguments.items() if k in body_fields}
+            resp = await client.post(path, json=body)
+        elif method == "DELETE":
+            resp = await client.delete(path)
+        elif method == "PUT":
+            body = {k: v for k, v in arguments.items()}
+            resp = await client.put(path, json=body)
+        else:
+            return f"Unsupported HTTP method: {method}"
+        
+        if resp.status_code == 204:
+            return "Operation completed successfully."
+        
+        return json.dumps(resp.json(), indent=2)
+    
+    except Exception as e:
+        return f"Error calling {tool_name}: {e}"
 
 
 @server.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[TextContent]:
+    """Call a tool by dispatching to the API.
+    
+    This is a generic implementation that routes tool calls to the
+    appropriate API endpoints based on the tool's routing metadata.
+    """
     async with httpx.AsyncClient(base_url=AGENT_DRIVE_URL, headers=_headers(), timeout=60) as client:
+        # Special handling for tools that need client-side logic
         if name == "upload_file":
+            # File upload requires special handling (multipart form data)
             file_path = Path(arguments["path"])
             if not file_path.exists():
                 return [TextContent(type="text", text=f"Error: File not found: {file_path}")]
+            
             with open(file_path, "rb") as f:
                 files = {"file": (file_path.name, f, "application/octet-stream")}
                 response = await client.post("/v1/files", files=files)
+            
             result = response.json()
             # If kb specified, add file to knowledge base after upload
             if arguments.get("kb") and response.status_code in (200, 201):
@@ -203,34 +211,11 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                     if file_id:
                         await client.post(f"/v1/knowledge-bases/{kb_id}/files", json={"file_ids": [file_id]})
                         result["added_to_kb"] = kb_id
+            
             return [TextContent(type="text", text=json.dumps(result, indent=2))]
-        elif name == "search":
-            body = {"query": arguments["query"], "top_k": arguments.get("top_k", 5)}
-            if arguments.get("kb"):
-                kb_id = await _resolve_kb_id(client, arguments["kb"])
-                if not kb_id:
-                    return [TextContent(type="text", text=f"Knowledge base '{arguments['kb']}' not found")]
-                if "articles_only" in arguments:
-                    body["articles_only"] = arguments["articles_only"]
-                response = await client.post(f"/v1/knowledge-bases/{kb_id}/search", json=body)
-            else:
-                response = await client.post("/v1/search", json=body)
-            return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
-        elif name == "get_file_status":
-            response = await client.get(f"/v1/files/{arguments['file_id']}")
-            return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
-        elif name == "list_files":
-            response = await client.get("/v1/files")
-            return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
-        elif name == "delete_file":
-            response = await client.delete(f"/v1/files/{arguments['file_id']}")
-            if response.status_code == 204:
-                return [TextContent(type="text", text="File deleted successfully.")]
-            return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
-        elif name == "get_chunk":
-            response = await client.get(f"/v1/chunks/{arguments['chunk_id']}")
-            return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
+        
         elif name == "download_file":
+            # Download requires special handling (streaming + local caching)
             from agentdrive_mcp.local_files import (
                 is_cached,
                 is_stale,
@@ -272,7 +257,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 return [TextContent(type="text", text=meta_resp.text)]
             meta = meta_resp.json()
 
-            # Stream download (collects into memory — acceptable for typical file sizes)
+            # Stream download
             async with client.stream("GET", f"/v1/files/{file_id}/download") as dl_resp:
                 if dl_resp.status_code != 200:
                     text = await dl_resp.aread()
@@ -297,36 +282,29 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 open_native(Path(result["local_path"]))
 
             return [TextContent(type="text", text=json.dumps(result))]
-        elif name == "create_api_key":
-            body = {}
-            if "name" in arguments:
-                body["name"] = arguments["name"]
-            response = await client.post("/v1/api-keys", json=body)
+        
+        elif name == "search":
+            # Search needs special handling for KB resolution
+            body = {"query": arguments["query"], "top_k": arguments.get("top_k", 5)}
+            if arguments.get("kb"):
+                kb_id = await _resolve_kb_id(client, arguments["kb"])
+                if not kb_id:
+                    return [TextContent(type="text", text=f"Knowledge base '{arguments['kb']}' not found")]
+                if "articles_only" in arguments:
+                    body["articles_only"] = arguments["articles_only"]
+                response = await client.post(f"/v1/knowledge-bases/{kb_id}/search", json=body)
+            else:
+                response = await client.post("/v1/search", json=body)
             return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
-        elif name == "list_api_keys":
-            response = await client.get("/v1/api-keys")
-            return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
-        elif name == "revoke_api_key":
-            response = await client.delete(f"/v1/api-keys/{arguments['key_id']}")
-            if response.status_code == 204:
-                return [TextContent(type="text", text="API key revoked successfully.")]
-            return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
-        # Knowledge base tools
-        elif name == "create_knowledge_base":
-            body: dict = {"name": arguments["name"]}
-            if "description" in arguments:
-                body["description"] = arguments["description"]
-            response = await client.post("/v1/knowledge-bases", json=body)
-            return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
-        elif name == "list_knowledge_bases":
-            response = await client.get("/v1/knowledge-bases")
-            return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
+        
         elif name == "get_knowledge_base":
+            # KB lookup needs name resolution
             kb_id = await _resolve_kb_id(client, arguments["kb"])
             if not kb_id:
                 return [TextContent(type="text", text=f"Knowledge base '{arguments['kb']}' not found")]
             response = await client.get(f"/v1/knowledge-bases/{kb_id}")
             return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
+        
         elif name == "delete_knowledge_base":
             kb_id = await _resolve_kb_id(client, arguments["kb"])
             if not kb_id:
@@ -335,18 +313,21 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             if response.status_code == 204:
                 return [TextContent(type="text", text="Knowledge base deleted successfully.")]
             return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
+        
         elif name == "add_files_to_kb":
             kb_id = await _resolve_kb_id(client, arguments["kb"])
             if not kb_id:
                 return [TextContent(type="text", text=f"Knowledge base '{arguments['kb']}' not found")]
             response = await client.post(f"/v1/knowledge-bases/{kb_id}/files", json={"file_ids": arguments["file_ids"]})
             return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
+        
         elif name == "remove_files_from_kb":
             kb_id = await _resolve_kb_id(client, arguments["kb"])
             if not kb_id:
                 return [TextContent(type="text", text=f"Knowledge base '{arguments['kb']}' not found")]
             response = await client.post(f"/v1/knowledge-bases/{kb_id}/files/remove", json={"file_ids": arguments["file_ids"]})
             return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
+        
         elif name == "search_kb":
             kb_id = await _resolve_kb_id(client, arguments["kb"])
             if not kb_id:
@@ -355,17 +336,19 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                     "articles_only": arguments.get("articles_only", False)}
             response = await client.post(f"/v1/knowledge-bases/{kb_id}/search", json=body)
             return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
+        
         elif name == "get_article":
             kb_id = await _resolve_kb_id(client, arguments["kb"])
             if not kb_id:
                 return [TextContent(type="text", text=f"Knowledge base '{arguments['kb']}' not found")]
             response = await client.get(f"/v1/knowledge-bases/{kb_id}/articles/{arguments['article_id']}")
             return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
+        
         elif name == "list_articles":
             kb_id = await _resolve_kb_id(client, arguments["kb"])
             if not kb_id:
                 return [TextContent(type="text", text=f"Knowledge base '{arguments['kb']}' not found")]
-            params: dict = {}
+            params = {}
             if "category" in arguments:
                 params["category"] = arguments["category"]
             if "article_type" in arguments:
@@ -374,6 +357,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             params["offset"] = arguments.get("offset", 0)
             response = await client.get(f"/v1/knowledge-bases/{kb_id}/articles", params=params)
             return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
+        
         elif name == "compile_kb":
             kb_id = await _resolve_kb_id(client, arguments["kb"])
             if not kb_id:
@@ -383,6 +367,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 params["force"] = "true"
             response = await client.post(f"/v1/knowledge-bases/{kb_id}/compile", params=params)
             return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
+        
         elif name == "health_check":
             kb_id = await _resolve_kb_id(client, arguments["kb"])
             if not kb_id:
@@ -392,12 +377,14 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 params["quick"] = "true"
             response = await client.post(f"/v1/knowledge-bases/{kb_id}/health-check", params=params)
             return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
+        
         elif name == "repair_kb":
             kb_id = await _resolve_kb_id(client, arguments["kb"])
             if not kb_id:
                 return [TextContent(type="text", text=f"Knowledge base '{arguments['kb']}' not found")]
             response = await client.post(f"/v1/knowledge-bases/{kb_id}/repair", json={"apply": arguments["apply"]})
             return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
+        
         elif name == "derive_article":
             kb_id = await _resolve_kb_id(client, arguments["kb"])
             if not kb_id:
@@ -407,7 +394,11 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 body["source_ids"] = arguments["source_ids"]
             response = await client.post(f"/v1/knowledge-bases/{kb_id}/articles/derived", json=body)
             return [TextContent(type="text", text=json.dumps(response.json(), indent=2))]
-        return [TextContent(type="text", text=f"Unknown tool: {name}")]
+        
+        else:
+            # Generic dispatch for all other tools
+            result = await _dispatch_tool_call(client, name, arguments)
+            return [TextContent(type="text", text=result)]
 
 
 async def main():
