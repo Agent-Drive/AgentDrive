@@ -6,7 +6,7 @@ from fastapi.responses import PlainTextResponse
 
 from agentdrive.config import settings
 from agentdrive.db.session import async_session_factory
-from agentdrive.routers import api_keys, auth, files, knowledge_bases, search
+from agentdrive.routers import api_keys, auth, files, knowledge_bases, mcp, search
 from agentdrive.services.queue import reap_stuck_files, start_workers, stop_workers
 
 
@@ -31,6 +31,7 @@ def create_app() -> FastAPI:
     app.include_router(files.router)
     app.include_router(search.router)
     app.include_router(knowledge_bases.router)
+    app.include_router(mcp.router)  # MCP tool discovery endpoint
 
     @app.get("/health")
     async def health():
