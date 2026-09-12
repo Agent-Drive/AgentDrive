@@ -1,6 +1,5 @@
 """Tests for streaming download and chunk_file interface."""
 
-import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -17,21 +16,16 @@ from agentdrive.services.storage import StorageService
 # ---------------------------------------------------------------------------
 
 
-@patch("agentdrive.services.storage._get_storage_client")
+@patch("agentdrive.services.storage._get_s3_client")
 @patch("agentdrive.services.storage.settings")
 def test_download_to_tempfile(mock_settings, mock_get_client):
     """download_to_tempfile returns a path with correct extension and file content."""
-    mock_settings.gcs_bucket = "test-bucket"
+    mock_settings.s3_bucket = "test-bucket"
     mock_client = MagicMock()
     mock_get_client.return_value = mock_client
-    mock_bucket = MagicMock()
-    mock_client.bucket.return_value = mock_bucket
-
-    mock_blob = MagicMock()
-    mock_blob.download_to_filename = MagicMock(
-        side_effect=lambda p: Path(p).write_bytes(b"fake-pdf-content")
+    mock_client.download_file.side_effect = lambda bucket, key, filename: Path(filename).write_bytes(
+        b"fake-pdf-content"
     )
-    mock_bucket.blob.return_value = mock_blob
 
     svc = StorageService()
     result = svc.download_to_tempfile("tenants/abc/files/123/report.pdf")
@@ -41,25 +35,19 @@ def test_download_to_tempfile(mock_settings, mock_get_client):
         assert result.suffix == ".pdf"
         assert result.exists()
         assert result.read_bytes() == b"fake-pdf-content"
-        mock_bucket.blob.assert_called_once_with("tenants/abc/files/123/report.pdf")
-        mock_blob.download_to_filename.assert_called_once()
+        mock_client.download_file.assert_called_once()
+        assert mock_client.download_file.call_args[0][1] == "tenants/abc/files/123/report.pdf"
     finally:
         result.unlink(missing_ok=True)
 
 
-@patch("agentdrive.services.storage._get_storage_client")
+@patch("agentdrive.services.storage._get_s3_client")
 @patch("agentdrive.services.storage.settings")
 def test_download_to_tempfile_preserves_extension(mock_settings, mock_get_client):
     """download_to_tempfile preserves .xlsx extension."""
-    mock_settings.gcs_bucket = "test-bucket"
+    mock_settings.s3_bucket = "test-bucket"
     mock_client = MagicMock()
     mock_get_client.return_value = mock_client
-    mock_bucket = MagicMock()
-    mock_client.bucket.return_value = mock_bucket
-
-    mock_blob = MagicMock()
-    mock_blob.download_to_filename = MagicMock()
-    mock_bucket.blob.return_value = mock_blob
 
     svc = StorageService()
     result = svc.download_to_tempfile("tenants/abc/files/123/data.xlsx")
@@ -146,23 +134,18 @@ def test_pdf_chunker_chunk_file_uses_file_path(mock_settings, tmp_path):
 # ---------------------------------------------------------------------------
 
 
-@patch("agentdrive.services.storage._get_storage_client")
+@patch("agentdrive.services.storage._get_s3_client")
 @patch("agentdrive.services.storage.settings")
 def test_download_stream_yields_chunks(mock_settings, mock_get_client):
-    """download_stream yields file content in chunks from GCS."""
+    """download_stream yields file content in chunks from S3."""
     import io
 
-    mock_settings.gcs_bucket = "test-bucket"
+    mock_settings.s3_bucket = "test-bucket"
     mock_client = MagicMock()
     mock_get_client.return_value = mock_client
-    mock_bucket = MagicMock()
-    mock_client.bucket.return_value = mock_bucket
 
     content = b"A" * 8192 + b"B" * 4096  # 12KB total
-    fake_blob = MagicMock()
-    fake_blob.exists.return_value = True
-    fake_blob.open.return_value = io.BytesIO(content)
-    mock_bucket.blob.return_value = fake_blob
+    mock_client.get_object.return_value = {"Body": io.BytesIO(content)}
 
     svc = StorageService()
     chunks = list(svc.download_stream("fake/path", chunk_size=4096))
@@ -171,19 +154,18 @@ def test_download_stream_yields_chunks(mock_settings, mock_get_client):
     assert len(chunks) == 3  # 4096 + 4096 + 4096
 
 
-@patch("agentdrive.services.storage._get_storage_client")
+@patch("agentdrive.services.storage._get_s3_client")
 @patch("agentdrive.services.storage.settings")
 def test_download_stream_raises_on_missing_blob(mock_settings, mock_get_client):
-    """download_stream raises FileNotFoundError when blob does not exist."""
-    mock_settings.gcs_bucket = "test-bucket"
+    """download_stream raises FileNotFoundError when object does not exist."""
+    from botocore.exceptions import ClientError
+
+    mock_settings.s3_bucket = "test-bucket"
     mock_client = MagicMock()
     mock_get_client.return_value = mock_client
-    mock_bucket = MagicMock()
-    mock_client.bucket.return_value = mock_bucket
-
-    fake_blob = MagicMock()
-    fake_blob.exists.return_value = False
-    mock_bucket.blob.return_value = fake_blob
+    mock_client.get_object.side_effect = ClientError(
+        {"Error": {"Code": "NoSuchKey", "Message": "Not Found"}}, "GetObject"
+    )
 
     svc = StorageService()
 

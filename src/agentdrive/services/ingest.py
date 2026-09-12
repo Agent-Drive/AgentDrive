@@ -128,7 +128,7 @@ async def _get_summary(
 def _download_and_chunk(
     gcs_path: str, content_type: str, filename: str, file_id: str
 ) -> tuple[list[ParentChildChunks], Path]:
-    """Sync I/O: download from GCS and chunk. Runs in a thread pool."""
+    """Sync I/O: download from object storage and chunk. Runs in a thread pool."""
     storage = StorageService()
     tmp_path = storage.download_to_tempfile(gcs_path)
     try:
