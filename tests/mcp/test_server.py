@@ -20,25 +20,14 @@ async def test_list_tools():
     assert "get_file_status" in tool_names
     assert "list_files" in tool_names
     assert "delete_file" in tool_names
-    assert "get_chunk" in tool_names
-    assert "create_api_key" in tool_names
-    assert "list_api_keys" in tool_names
-    assert "revoke_api_key" in tool_names
     assert "download_file" in tool_names
-    assert "create_knowledge_base" in tool_names
-    assert "list_knowledge_bases" in tool_names
-    assert "get_knowledge_base" in tool_names
-    assert "delete_knowledge_base" in tool_names
-    assert "add_files_to_kb" in tool_names
-    assert "remove_files_from_kb" in tool_names
-    assert "search_kb" in tool_names
-    assert "get_article" in tool_names
-    assert "list_articles" in tool_names
-    assert "compile_kb" in tool_names
-    assert "health_check" in tool_names
-    assert "repair_kb" in tool_names
-    assert "derive_article" in tool_names
-    assert len(tool_names) == 23
+    assert "get_chunk" not in tool_names
+    assert "create_api_key" not in tool_names
+    assert "list_api_keys" not in tool_names
+    assert "revoke_api_key" not in tool_names
+    assert "create_knowledge_base" not in tool_names
+    assert "search_kb" not in tool_names
+    assert len(tool_names) == 6
 
 
 @pytest.mark.asyncio
@@ -47,6 +36,7 @@ async def test_upload_tool_has_path_param():
     upload = next(t for t in tools if t.name == "upload_file")
     assert "path" in upload.inputSchema["properties"]
     assert "path" in upload.inputSchema["required"]
+    assert "kb" not in upload.inputSchema["properties"]
 
 
 @pytest.mark.asyncio
@@ -55,3 +45,4 @@ async def test_search_tool_has_query_param():
     search = next(t for t in tools if t.name == "search")
     assert "query" in search.inputSchema["properties"]
     assert "query" in search.inputSchema["required"]
+    assert "kb" not in search.inputSchema["properties"]

@@ -32,7 +32,7 @@ src/agentdrive/
 ├── main.py              # FastAPI app entrypoint
 ├── config.py            # Pydantic settings from .env
 ├── dependencies.py      # Auth dependency (API key → tenant)
-├── routers/             # REST endpoints (files, search)
+├── routers/             # REST endpoints (files, search, auth, api keys)
 ├── models/              # SQLAlchemy models (tenant, file, chunk, chunk_alias)
 ├── schemas/             # Pydantic request/response schemas
 ├── services/            # Business logic (ingest, storage, auth)
@@ -40,7 +40,7 @@ src/agentdrive/
 ├── embedding/           # Voyage AI client + batch pipeline
 ├── enrichment/          # Gemini 2.5 Flash contextual enrichment + table questions
 ├── search/              # Vector search, BM25, RRF fusion, Cohere rerank
-└── mcp/                 # MCP server (10 tools for agent integration)
+└── mcp/                 # MCP server (6 tools for agent integration)
 ```
 
 ## Gotchas
