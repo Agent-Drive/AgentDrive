@@ -43,8 +43,7 @@ def get_workos_user(access_token: str):
         user_id = payload.get("sub")
         if not user_id:
             return None
-        user = workos_client.user_management.get_user(user_id=user_id)
-        return user
+        return workos_client.user_management.get_user(user_id)
     except Exception:
         return None
 

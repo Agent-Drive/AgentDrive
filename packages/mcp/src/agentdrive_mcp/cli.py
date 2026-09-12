@@ -63,7 +63,6 @@ def _do_login(api_url: str) -> dict:
             if resp.status_code == 200:
                 token_data = resp.json()
                 access_token = token_data["access_token"]
-
                 exchange_resp = httpx.post(
                     f"{api_url}/auth/exchange",
                     json={"access_token": access_token},
