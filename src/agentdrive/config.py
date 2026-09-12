@@ -1,10 +1,15 @@
 # src/agentdrive/config.py
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/agentdrive"
-    gcs_bucket: str = "agentdrive-files"
+    s3_bucket: str = Field(default="", validation_alias=AliasChoices("S3_BUCKET", "AWS_S3_BUCKET_NAME"))
+    s3_endpoint_url: str = Field(default="", validation_alias=AliasChoices("S3_ENDPOINT_URL", "AWS_ENDPOINT_URL"))
+    s3_access_key_id: str = Field(default="", validation_alias=AliasChoices("S3_ACCESS_KEY_ID", "AWS_ACCESS_KEY_ID"))
+    s3_secret_access_key: str = Field(default="", validation_alias=AliasChoices("S3_SECRET_ACCESS_KEY", "AWS_SECRET_ACCESS_KEY"))
+    s3_region: str = Field(default="auto", validation_alias=AliasChoices("S3_REGION", "AWS_DEFAULT_REGION"))
     voyage_api_key: str = ""
     cohere_api_key: str = ""
     enrichment_api_key: str = ""
@@ -27,7 +32,12 @@ class Settings(BaseSettings):
     max_signed_upload_bytes: int = 5 * 1024 * 1024 * 1024  # 5GB
     signed_url_expiry_hours: int = 1
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+        "populate_by_name": True,
+    }
 
 
 settings = Settings()

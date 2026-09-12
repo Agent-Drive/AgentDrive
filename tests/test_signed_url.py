@@ -4,48 +4,54 @@ from unittest.mock import MagicMock, patch
 from agentdrive.services.storage import StorageService
 
 
+def _service(mock_client):
+    with patch("agentdrive.services.storage._get_s3_client", return_value=mock_client):
+        with patch("agentdrive.services.storage.settings") as mock_settings:
+            mock_settings.s3_bucket = "test-bucket"
+            return StorageService()
+
+
 def test_generate_signed_upload_url():
-    with patch("agentdrive.services.storage._get_storage_client") as mock_fn:
-        mock_client = MagicMock()
-        mock_fn.return_value = mock_client
-        mock_bucket = MagicMock()
-        mock_client.bucket.return_value = mock_bucket
-        mock_blob = MagicMock()
-        mock_bucket.blob.return_value = mock_blob
-        mock_blob.generate_signed_url.return_value = "https://storage.googleapis.com/signed-url"
+    mock_client = MagicMock()
+    mock_client.generate_presigned_url.return_value = "https://s3.example/signed-url"
+    service = _service(mock_client)
+    tenant_id = uuid.uuid4()
+    file_id = uuid.uuid4()
+    url = service.generate_signed_upload_url(
+        tenant_id, file_id, "large.pdf", "application/pdf"
+    )
 
-        service = StorageService()
-        url = service.generate_signed_upload_url(
-            uuid.uuid4(), uuid.uuid4(), "large.pdf", "application/pdf"
-        )
-
-        assert url == "https://storage.googleapis.com/signed-url"
-        call_kwargs = mock_blob.generate_signed_url.call_args[1]
-        assert call_kwargs["method"] == "PUT"
-        assert call_kwargs["content_type"] == "application/pdf"
+    assert url == "https://s3.example/signed-url"
+    kwargs = mock_client.generate_presigned_url.call_args
+    assert kwargs[0][0] == "put_object"
+    params = kwargs[1]["Params"]
+    assert params["Bucket"] == "test-bucket"
+    assert params["Key"].endswith("large.pdf")
+    assert params["ContentType"] == "application/pdf"
+    assert kwargs[1]["ExpiresIn"] == 3600
 
 
 def test_blob_exists():
-    with patch("agentdrive.services.storage._get_storage_client") as mock_fn:
-        mock_client = MagicMock()
-        mock_fn.return_value = mock_client
-        mock_client.bucket.return_value = MagicMock()
-        service = StorageService()
-        mock_blob = MagicMock()
-        service._bucket.blob.return_value = mock_blob
-        mock_blob.exists.return_value = True
-        assert service.blob_exists("test/path") is True
-        mock_blob.exists.assert_called_once()
+    mock_client = MagicMock()
+    mock_client.head_object.return_value = {}
+    service = _service(mock_client)
+    assert service.blob_exists("test/path") is True
+    mock_client.head_object.assert_called_once_with(Bucket="test-bucket", Key="test/path")
+
+
+def test_blob_exists_missing():
+    from botocore.exceptions import ClientError
+
+    mock_client = MagicMock()
+    mock_client.head_object.side_effect = ClientError(
+        {"Error": {"Code": "404", "Message": "Not Found"}}, "HeadObject"
+    )
+    service = _service(mock_client)
+    assert service.blob_exists("test/path") is False
 
 
 def test_get_blob_size():
-    with patch("agentdrive.services.storage._get_storage_client") as mock_fn:
-        mock_client = MagicMock()
-        mock_fn.return_value = mock_client
-        mock_client.bucket.return_value = MagicMock()
-        service = StorageService()
-        mock_blob = MagicMock()
-        service._bucket.blob.return_value = mock_blob
-        mock_blob.size = 50_000_000
-        assert service.get_blob_size("test/path") == 50_000_000
-        mock_blob.reload.assert_called_once()
+    mock_client = MagicMock()
+    mock_client.head_object.return_value = {"ContentLength": 50_000_000}
+    service = _service(mock_client)
+    assert service.get_blob_size("test/path") == 50_000_000

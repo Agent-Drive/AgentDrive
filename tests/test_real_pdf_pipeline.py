@@ -374,7 +374,7 @@ Total headcount reached 12,400 employees across 28 countries. Engineering repres
 
 @pytest.mark.asyncio
 async def test_large_pdf_batch_path(db_session: AsyncSession) -> None:
-    """50-page PDF exercises the batch Document AI path (_process_batch_api)."""
+    """50-page PDF uses the Document AI online API in 30-page slices."""
 
     # -- Setup: create tenant + file in DB --
     tenant = Tenant(name="test-tenant-large")
@@ -402,20 +402,14 @@ async def test_large_pdf_batch_path(db_session: AsyncSession) -> None:
     print(f"{'='*60}")
 
     # -- Mocks --
-    # Mock _process_batch_api (NOT _process_batch) since 50 pages > 30 triggers batch path
-    # Mock StorageService in ingest module
     with (
         patch(
             "agentdrive.services.ingest.StorageService"
         ) as MockStorage,
         patch(
-            "agentdrive.chunking.pdf.PdfChunker._process_batch_api",
-            return_value=LARGE_DOC_MARKDOWN,
-        ) as mock_batch_api,
-        patch(
             "agentdrive.chunking.pdf.PdfChunker._process_batch",
-            side_effect=AssertionError("_process_batch should NOT be called for 50-page PDF"),
-        ),
+            return_value=LARGE_DOC_MARKDOWN,
+        ) as mock_sync,
     ):
         MockStorage.return_value.download_to_tempfile.return_value = pdf_path
 
@@ -432,10 +426,9 @@ async def test_large_pdf_batch_path(db_session: AsyncSession) -> None:
     print(f"Completed batches: {file_after.completed_batches}")
     print(f"Current phase: {file_after.current_phase}")
 
-    # 2. _process_batch_api was called (proving batch path was taken)
-    mock_batch_api.assert_called_once()
-    print(f"\n_process_batch_api called: {mock_batch_api.call_count} time(s)")
-    print(f"  args: gcs_path={mock_batch_api.call_args[0][0]}, file_id={mock_batch_api.call_args[0][2]}")
+    # 2. Online API was used in 30-page slices (50 pages -> 2 calls)
+    assert mock_sync.call_count == 2
+    print(f"\n_process_batch called: {mock_sync.call_count} time(s)")
 
     # 3. ParentChunks exist — should be more than the small PDF test
     result = await db_session.execute(
@@ -500,7 +493,7 @@ async def test_large_pdf_batch_path(db_session: AsyncSession) -> None:
     print(f"  Chunks:   {len(chunks)}")
     print(f"  Batches:  {len(batches)}")
     print(f"  Status:   {file_after.status}")
-    print(f"  Batch API called: {mock_batch_api.call_count}")
+    print(f"  Online API called: {mock_sync.call_count}")
     print(f"{'='*60}")
 
     # Cleanup
@@ -508,104 +501,21 @@ async def test_large_pdf_batch_path(db_session: AsyncSession) -> None:
 
 
 @pytest.mark.asyncio
-async def test_very_large_pdf_multi_batch(db_session: AsyncSession) -> None:
-    """600-page PDF exercises chunk_file_batched (>500 pages -> multiple batch API calls)."""
+async def test_very_large_pdf_multi_batch() -> None:
+    """600-page PDF uses the online API in 30-page slices."""
     from agentdrive.chunking.pdf import PdfChunker
 
-    # -- Create a 600-page PDF --
     pdf_path = _create_real_pdf(num_pages=600)
-
-    print(f"\n{'='*60}")
-    print(f"PDF path: {pdf_path} ({pdf_path.stat().st_size} bytes, 600 pages)")
-    print(f"{'='*60}")
-
-    call_count = 0
-
-    def mock_batch_api(self, gcs_path: str, processor_name: str, file_id: str) -> str:
-        nonlocal call_count
-        call_count += 1
-        if "1-500" in gcs_path or "1-500" in file_id:
-            return LARGE_DOC_MARKDOWN
-        else:
-            return BATCH2_MARKDOWN
-
-    # -- Mocks --
+    chunker = PdfChunker()
     with (
-        patch(
-            "agentdrive.chunking.pdf.PdfChunker._process_batch_api",
-            mock_batch_api,
-        ),
-        patch(
-            "agentdrive.chunking.pdf.StorageService"
-        ) as MockStorage,
+        patch.object(chunker, "_process_batch", return_value=LARGE_DOC_MARKDOWN) as mock_sync,
         patch(
             "agentdrive.chunking.pdf._processor_name",
             return_value="projects/test/locations/us/processors/test-proc",
         ),
     ):
-        mock_storage_inst = MockStorage.return_value
-        mock_storage_inst.upload_bytes.return_value = None
-        mock_storage_inst.delete_blob.return_value = None
+        results = chunker.chunk_file(pdf_path, "mega_report.pdf")
 
-        chunker = PdfChunker()
-        results = chunker.chunk_file_batched(
-            path=pdf_path,
-            filename="mega_report.pdf",
-            gcs_path="tenants/test/files/mega_report.pdf",
-            file_id="test-file-id-600",
-        )
-
-    # -- Assertions --
-
-    # 1. Two batches returned (pages 1-500, pages 501-600)
-    assert len(results) == 2, f"Expected 2 batch results, got {len(results)}"
-    print(f"\nBatch results: {len(results)}")
-
-    page_range_1, chunks_1 = results[0]
-    page_range_2, chunks_2 = results[1]
-
-    print(f"  Batch 1: range={page_range_1}, chunk_groups={len(chunks_1)}")
-    print(f"  Batch 2: range={page_range_2}, chunk_groups={len(chunks_2)}")
-
-    # 2. Correct page ranges
-    assert page_range_1 == "1-500", f"Expected '1-500', got '{page_range_1}'"
-    assert page_range_2 == "501-600", f"Expected '501-600', got '{page_range_2}'"
-
-    # 3. Both batches produced chunks
-    assert len(chunks_1) > 0, "Batch 1 should have chunks"
-    assert len(chunks_2) > 0, "Batch 2 should have chunks"
-
-    # 4. _process_batch_api was called twice
-    assert call_count == 2, f"Expected 2 batch API calls, got {call_count}"
-    print(f"\n_process_batch_api called: {call_count} times")
-
-    # 5. StorageService was used for upload + cleanup
-    assert mock_storage_inst.upload_bytes.call_count == 2, (
-        f"Expected 2 upload_bytes calls, got {mock_storage_inst.upload_bytes.call_count}"
-    )
-    assert mock_storage_inst.delete_blob.call_count == 2, (
-        f"Expected 2 delete_blob calls, got {mock_storage_inst.delete_blob.call_count}"
-    )
-    print(f"  upload_bytes calls: {mock_storage_inst.upload_bytes.call_count}")
-    print(f"  delete_blob calls: {mock_storage_inst.delete_blob.call_count}")
-
-    # 6. Enumerate actual chunks from both batches
-    total_children_1 = sum(len(g.children) for g in chunks_1)
-    total_children_2 = sum(len(g.children) for g in chunks_2)
-    print(f"\n  Batch 1 total child chunks: {total_children_1}")
-    print(f"  Batch 2 total child chunks: {total_children_2}")
-    assert total_children_1 > 0, "Batch 1 should have child chunks"
-    assert total_children_2 > 0, "Batch 2 should have child chunks"
-
-    # -- Summary --
-    print(f"\n{'='*60}")
-    print("MULTI-BATCH (600-PAGE) SUMMARY")
-    print(f"  Batch 1: range={page_range_1}, groups={len(chunks_1)}, children={total_children_1}")
-    print(f"  Batch 2: range={page_range_2}, groups={len(chunks_2)}, children={total_children_2}")
-    print(f"  Batch API calls: {call_count}")
-    print(f"  Storage uploads: {mock_storage_inst.upload_bytes.call_count}")
-    print(f"  Storage deletes: {mock_storage_inst.delete_blob.call_count}")
-    print(f"{'='*60}")
-
-    # Cleanup
+    assert mock_sync.call_count == 20
+    assert len(results) > 0
     pdf_path.unlink(missing_ok=True)
