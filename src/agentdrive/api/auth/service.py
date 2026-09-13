@@ -74,24 +74,30 @@ def get_workos_user(access_token: str):
         return None
 
 
+async def get_or_create_tenant_for_workos_user(session: AsyncSession, user) -> Tenant:
+    """Find tenant by WorkOS user id, or auto-provision. Raises 403 if provisioning is off."""
+    result = await session.execute(
+        select(Tenant).where(Tenant.workos_user_id == user.id)
+    )
+    tenant = result.scalar_one_or_none()
+    if tenant is not None:
+        return tenant
+    if not settings.auto_provision_tenants:
+        raise HTTPException(status_code=403, detail="Auto-provisioning is disabled. Contact your admin.")
+    name = f"{user.first_name or ''} {user.last_name or ''}".strip() or user.email
+    tenant = Tenant(name=name, workos_user_id=user.id)
+    session.add(tenant)
+    await session.flush()
+    return tenant
+
+
 async def exchange_token(session: AsyncSession, body: ExchangeRequest) -> ExchangeResponse:
     """Exchange a WorkOS access token for an Agent Drive sk-ad- API key."""
     user = get_workos_user(body.access_token)
     if user is None:
         raise HTTPException(status_code=401, detail="Invalid or expired WorkOS token")
 
-    result = await session.execute(
-        select(Tenant).where(Tenant.workos_user_id == user.id)
-    )
-    tenant = result.scalar_one_or_none()
-
-    if tenant is None:
-        if not settings.auto_provision_tenants:
-            raise HTTPException(status_code=403, detail="Auto-provisioning is disabled. Contact your admin.")
-        name = f"{user.first_name or ''} {user.last_name or ''}".strip() or user.email
-        tenant = Tenant(name=name, workos_user_id=user.id)
-        session.add(tenant)
-        await session.flush()
+    tenant = await get_or_create_tenant_for_workos_user(session, user)
 
     raw_key, prefix, key_hash = generate_api_key()
     api_key = ApiKey(tenant_id=tenant.id, key_prefix=prefix, key_hash=key_hash, name="cli-login")
