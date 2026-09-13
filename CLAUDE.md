@@ -16,7 +16,7 @@ uv run uvicorn agentdrive.main:app --port 8080
 uv run pytest tests/ -v
 
 # Run a single test
-uv run pytest tests/enrichment/test_client.py::test_generate_context -v
+uv run pytest tests/pipeline/enrichment/test_client.py::test_generate_context -v
 
 # Run migrations
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5434/agentdrive uv run alembic upgrade head
@@ -31,16 +31,14 @@ docker run -d --name agentdrive-test-db -e POSTGRES_PASSWORD=postgres -e POSTGRE
 src/agentdrive/
 ├── main.py              # FastAPI app entrypoint
 ├── config.py            # Pydantic settings from .env
-├── dependencies.py      # Auth dependency (API key → tenant)
-├── routers/             # REST endpoints (files, search, auth, api keys)
-├── models/              # SQLAlchemy models (tenant, file, chunk, chunk_alias)
-├── schemas/             # Pydantic request/response schemas
-├── services/            # Business logic (ingest, storage, auth)
-├── chunking/            # File-type-specific chunkers + registry
-├── embedding/           # Voyage AI client + batch pipeline
-├── enrichment/          # Gemini 2.5 Flash contextual enrichment + table questions
+├── api/                 # dependencies, routers, schemas
+├── data/                # session + SQLAlchemy models
+├── pipeline/            # ingest, queue, storage, chunking, embedding, enrichment
 ├── search/              # Vector search, BM25, RRF fusion, Cohere rerank
-└── mcp/                 # MCP server (6 tools for agent integration)
+├── auth/                # API key hashing / generation
+└── cli/
+
+packages/mcp/            # standalone MCP client (the only MCP)
 ```
 
 ## Gotchas
@@ -73,4 +71,4 @@ src/agentdrive/
 - Tests require pgvector Docker container on port 5434
 - External APIs (Voyage, Cohere, Google AI Studio, GCS) are mocked in all tests
 - `conftest.py` drops and recreates all tables per test for isolation
-- Integration tests in `test_files.py` use real DB
+- Integration tests in `tests/api/test_files.py` use real DB

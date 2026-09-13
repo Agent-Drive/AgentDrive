@@ -2,8 +2,8 @@ import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from agentdrive.embedding.client import EmbeddingClient
-from agentdrive.models.chunk import ParentChunk
+from agentdrive.pipeline.embedding.client import EmbeddingClient
+from agentdrive.data.models.chunk import ParentChunk
 from agentdrive.search.bm25 import bm25_search
 from agentdrive.search.fusion import reciprocal_rank_fusion
 from agentdrive.search.rerank import rerank_results

@@ -5,9 +5,9 @@ from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
 
 from agentdrive.config import settings
-from agentdrive.db.session import async_session_factory
-from agentdrive.routers import api_keys, auth, files, search
-from agentdrive.services.queue import reap_stuck_files, start_workers, stop_workers
+from agentdrive.data.session import async_session_factory
+from agentdrive.api.routers import api_keys, auth, files, search
+from agentdrive.pipeline.queue import reap_stuck_files, start_workers, stop_workers
 
 
 @asynccontextmanager
