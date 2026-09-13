@@ -1,13 +1,21 @@
-from fastapi import APIRouter, Depends, HTTPException
+import secrets
+import string
+
+import bcrypt
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agentdrive.config import settings
-from agentdrive.engine.data.session import get_session
 from agentdrive.engine.data.models.api_key import ApiKey
 from agentdrive.engine.data.models.tenant import Tenant
-from agentdrive.api.auth import generate_api_key
-from agentdrive.api.schemas.auth import ExchangeRequest, ExchangeResponse
+from agentdrive.api.auth.schemas import ExchangeRequest, ExchangeResponse
+
+KEY_PREFIX = "sk-ad-"
+PREFIX_LENGTH = 8
+KEY_RANDOM_LENGTH = 32
+
+_ALPHABET = string.ascii_letters + string.digits
 
 workos_client = None
 if settings.workos_api_key and settings.workos_client_id:
@@ -19,7 +27,35 @@ if settings.workos_api_key and settings.workos_client_id:
     )
 
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+def hash_api_key(key: str) -> str:
+    return bcrypt.hashpw(key.encode(), bcrypt.gensalt()).decode()
+
+
+def verify_api_key(key: str, hashed: str) -> bool:
+    return bcrypt.checkpw(key.encode(), hashed.encode())
+
+
+def generate_api_key() -> tuple[str, str, str]:
+    """Generate a new API key.
+
+    Returns:
+        (raw_key, prefix, key_hash) — raw_key shown once, prefix stored plaintext, hash stored.
+    """
+    random_part = "".join(secrets.choice(_ALPHABET) for _ in range(KEY_RANDOM_LENGTH))
+    prefix = random_part[:PREFIX_LENGTH]
+    raw_key = f"{KEY_PREFIX}{random_part}"
+    key_hash = hash_api_key(raw_key)
+    return raw_key, prefix, key_hash
+
+
+def parse_key_prefix(key: str) -> str | None:
+    """Extract the 8-char prefix from an sk-ad- key. Returns None for legacy keys."""
+    if not key.startswith(KEY_PREFIX):
+        return None
+    remainder = key[len(KEY_PREFIX):]
+    if len(remainder) < PREFIX_LENGTH:
+        return None
+    return remainder[:PREFIX_LENGTH]
 
 
 def get_workos_user(access_token: str):
@@ -38,19 +74,7 @@ def get_workos_user(access_token: str):
         return None
 
 
-@router.get("/config")
-async def auth_config():
-    """Public endpoint — returns client_id for CLI device flow."""
-    if not settings.workos_client_id:
-        raise HTTPException(status_code=503, detail="WorkOS not configured")
-    return {"client_id": settings.workos_client_id}
-
-
-@router.post("/exchange", response_model=ExchangeResponse)
-async def exchange_token(
-    body: ExchangeRequest,
-    session: AsyncSession = Depends(get_session),
-):
+async def exchange_token(session: AsyncSession, body: ExchangeRequest) -> ExchangeResponse:
     """Exchange a WorkOS access token for an Agent Drive sk-ad- API key."""
     user = get_workos_user(body.access_token)
     if user is None:

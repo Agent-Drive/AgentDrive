@@ -1,6 +1,6 @@
 import bcrypt
 import pytest
-from agentdrive.api.auth import hash_api_key, verify_api_key
+from agentdrive.api.auth.service import hash_api_key, verify_api_key
 
 
 def test_hash_api_key():
@@ -21,7 +21,7 @@ def test_verify_api_key_invalid():
     assert verify_api_key("sk-wrong-key", hashed) is False
 
 
-from agentdrive.api.auth import generate_api_key, parse_key_prefix, KEY_PREFIX
+from agentdrive.api.auth.service import generate_api_key, parse_key_prefix, KEY_PREFIX
 
 
 def test_generate_api_key_format():

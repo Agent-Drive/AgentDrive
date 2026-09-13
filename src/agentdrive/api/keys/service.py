@@ -1,31 +1,24 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from agentdrive.engine.data.session import get_session
-from agentdrive.api.dependencies import get_current_tenant
 from agentdrive.engine.data.models.api_key import ApiKey
 from agentdrive.engine.data.models.tenant import Tenant
-from agentdrive.api.schemas.api_keys import (
+from agentdrive.api.keys.schemas import (
     ApiKeyCreate,
     ApiKeyCreateResponse,
     ApiKeyListResponse,
     ApiKeyResponse,
 )
-from agentdrive.api.auth import generate_api_key
-
-router = APIRouter(prefix="/v1/api-keys", tags=["api-keys"])
+from agentdrive.api.auth.service import generate_api_key
 
 
-@router.post("", status_code=201, response_model=ApiKeyCreateResponse)
 async def create_api_key(
-    body: ApiKeyCreate,
-    tenant: Tenant = Depends(get_current_tenant),
-    session: AsyncSession = Depends(get_session),
-):
+    session: AsyncSession, tenant: Tenant, body: ApiKeyCreate
+) -> ApiKeyCreateResponse:
     raw_key, prefix, key_hash = generate_api_key()
     api_key = ApiKey(
         tenant_id=tenant.id,
@@ -47,11 +40,7 @@ async def create_api_key(
     )
 
 
-@router.get("", response_model=ApiKeyListResponse)
-async def list_api_keys(
-    tenant: Tenant = Depends(get_current_tenant),
-    session: AsyncSession = Depends(get_session),
-):
+async def list_api_keys(session: AsyncSession, tenant: Tenant) -> ApiKeyListResponse:
     result = await session.execute(
         select(ApiKey)
         .where(ApiKey.tenant_id == tenant.id)
@@ -64,12 +53,7 @@ async def list_api_keys(
     )
 
 
-@router.delete("/{key_id}", status_code=204)
-async def revoke_api_key(
-    key_id: uuid.UUID,
-    tenant: Tenant = Depends(get_current_tenant),
-    session: AsyncSession = Depends(get_session),
-):
+async def revoke_api_key(session: AsyncSession, tenant: Tenant, key_id: uuid.UUID) -> None:
     result = await session.execute(
         select(ApiKey).where(ApiKey.id == key_id, ApiKey.tenant_id == tenant.id)
     )

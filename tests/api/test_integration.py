@@ -7,7 +7,7 @@ import pytest
 import pytest_asyncio
 from agentdrive.engine.data.models.api_key import ApiKey
 from agentdrive.engine.data.models.tenant import Tenant
-from agentdrive.api.auth import hash_api_key, parse_key_prefix
+from agentdrive.api.auth.service import hash_api_key, parse_key_prefix
 
 TEST_API_KEY = "sk-ad-intgtest1keyforintegrationsmoketest"
 
@@ -24,9 +24,9 @@ async def authed_client(client, db_session):
     return client
 
 @pytest.mark.asyncio
-@patch("agentdrive.api.routers.search._get_engine")
-@patch("agentdrive.api.routers.files.enqueue", lambda file_id: None)
-@patch("agentdrive.api.routers.files.StorageService")
+@patch("agentdrive.api.search.service._get_engine")
+@patch("agentdrive.api.files.service.enqueue", lambda file_id: None)
+@patch("agentdrive.api.files.service.StorageService")
 async def test_upload_and_search(mock_storage_cls, mock_get_engine, authed_client):
     # Mock GCS
     mock_storage = MagicMock()

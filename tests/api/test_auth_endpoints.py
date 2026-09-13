@@ -17,7 +17,7 @@ async def test_exchange_creates_tenant(client, db_session: AsyncSession):
     mock_user.first_name = "Test"
     mock_user.last_name = "User"
 
-    with patch("agentdrive.api.routers.auth.get_workos_user") as mock_get_user:
+    with patch("agentdrive.api.auth.service.get_workos_user") as mock_get_user:
         mock_get_user.return_value = mock_user
         response = await client.post("/auth/exchange", json={"access_token": "fake-workos-access-token"})
 
@@ -45,7 +45,7 @@ async def test_exchange_existing_tenant(client, db_session: AsyncSession):
     mock_user.first_name = "Existing"
     mock_user.last_name = "User"
 
-    with patch("agentdrive.api.routers.auth.get_workos_user") as mock_get_user:
+    with patch("agentdrive.api.auth.service.get_workos_user") as mock_get_user:
         mock_get_user.return_value = mock_user
         response = await client.post("/auth/exchange", json={"access_token": "fake-workos-access-token"})
 
@@ -56,7 +56,7 @@ async def test_exchange_existing_tenant(client, db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_exchange_invalid_token(client):
-    with patch("agentdrive.api.routers.auth.get_workos_user") as mock_get_user:
+    with patch("agentdrive.api.auth.service.get_workos_user") as mock_get_user:
         mock_get_user.return_value = None
         response = await client.post("/auth/exchange", json={"access_token": "invalid-token"})
     assert response.status_code == 401
@@ -70,8 +70,8 @@ async def test_exchange_auto_provision_disabled(client, db_session: AsyncSession
     mock_user.first_name = "New"
     mock_user.last_name = "User"
 
-    with patch("agentdrive.api.routers.auth.get_workos_user") as mock_get_user, \
-         patch("agentdrive.api.routers.auth.settings") as mock_settings:
+    with patch("agentdrive.api.auth.service.get_workos_user") as mock_get_user, \
+         patch("agentdrive.api.auth.service.settings") as mock_settings:
         mock_get_user.return_value = mock_user
         mock_settings.auto_provision_tenants = False
         mock_settings.workos_api_key = "fake"

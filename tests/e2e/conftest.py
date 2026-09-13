@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 from agentdrive.config import settings
-from agentdrive.api.auth import generate_api_key
+from agentdrive.api.auth.service import generate_api_key
 
 SERVER_URL = "http://localhost:8080"
 

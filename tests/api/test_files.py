@@ -4,7 +4,7 @@ import pytest
 import pytest_asyncio
 from agentdrive.engine.data.models.api_key import ApiKey
 from agentdrive.engine.data.models.tenant import Tenant
-from agentdrive.api.auth import hash_api_key, parse_key_prefix
+from agentdrive.api.auth.service import hash_api_key, parse_key_prefix
 
 TEST_API_KEY = "sk-ad-filetest1keyforunittestingfiles"
 
@@ -12,7 +12,7 @@ TEST_API_KEY = "sk-ad-filetest1keyforunittestingfiles"
 @pytest.fixture(autouse=True)
 def mock_ingest(monkeypatch):
     """Prevent enqueue from starting real ingestion during tests."""
-    monkeypatch.setattr("agentdrive.api.routers.files.enqueue", lambda file_id: None)
+    monkeypatch.setattr("agentdrive.api.files.service.enqueue", lambda file_id: None)
 
 
 @pytest_asyncio.fixture
@@ -30,7 +30,7 @@ async def authed_client(client, db_session):
 
 
 @pytest.mark.asyncio
-@patch("agentdrive.api.routers.files.StorageService")
+@patch("agentdrive.api.files.service.StorageService")
 async def test_upload_file(mock_storage_cls, authed_client):
     client, tenant = authed_client
     mock_storage = MagicMock()
@@ -49,7 +49,7 @@ async def test_upload_file(mock_storage_cls, authed_client):
 
 
 @pytest.mark.asyncio
-@patch("agentdrive.api.routers.files.StorageService")
+@patch("agentdrive.api.files.service.StorageService")
 async def test_get_file_status(mock_storage_cls, authed_client):
     client, tenant = authed_client
     mock_storage = MagicMock()
@@ -66,7 +66,7 @@ async def test_get_file_status(mock_storage_cls, authed_client):
 
 
 @pytest.mark.asyncio
-@patch("agentdrive.api.routers.files.StorageService")
+@patch("agentdrive.api.files.service.StorageService")
 async def test_list_files(mock_storage_cls, authed_client):
     client, tenant = authed_client
     mock_storage = MagicMock()
@@ -80,7 +80,7 @@ async def test_list_files(mock_storage_cls, authed_client):
 
 
 @pytest.mark.asyncio
-@patch("agentdrive.api.routers.files.StorageService")
+@patch("agentdrive.api.files.service.StorageService")
 async def test_delete_file(mock_storage_cls, authed_client):
     client, tenant = authed_client
     mock_storage = MagicMock()
@@ -94,7 +94,7 @@ async def test_delete_file(mock_storage_cls, authed_client):
 
 
 @pytest.mark.asyncio
-@patch("agentdrive.api.routers.files.StorageService")
+@patch("agentdrive.api.files.service.StorageService")
 async def test_get_file_includes_updated_at(mock_storage_cls, authed_client):
     client, tenant = authed_client
     mock_storage = MagicMock()
@@ -114,7 +114,7 @@ async def test_get_file_includes_updated_at(mock_storage_cls, authed_client):
 
 
 @pytest.mark.asyncio
-@patch("agentdrive.api.routers.files.StorageService")
+@patch("agentdrive.api.files.service.StorageService")
 async def test_download_file(mock_storage_cls, authed_client):
     client, tenant = authed_client
     file_content = b"hello world file content"
@@ -137,7 +137,7 @@ async def test_download_file(mock_storage_cls, authed_client):
 
 
 @pytest.mark.asyncio
-@patch("agentdrive.api.routers.files.StorageService")
+@patch("agentdrive.api.files.service.StorageService")
 async def test_download_file_blob_missing(mock_storage_cls, authed_client):
     client, tenant = authed_client
     mock_storage = MagicMock()

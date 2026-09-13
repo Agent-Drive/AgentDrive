@@ -1,18 +1,17 @@
 import time
 import uuid
-from fastapi import APIRouter, Depends, HTTPException
+
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from agentdrive.engine.pipeline.chunking.tokens import count_tokens
-from agentdrive.engine.data.session import get_session
-from agentdrive.api.dependencies import get_current_tenant
 from agentdrive.engine.data.models.chunk import Chunk
 from agentdrive.engine.data.models.file import File
 from agentdrive.engine.data.models.tenant import Tenant
-from agentdrive.api.schemas.search import SearchRequest, SearchResponse, SearchResultResponse
+from agentdrive.api.search.schemas import SearchRequest, SearchResponse, SearchResultResponse
 from agentdrive.engine.search.engine import SearchEngine
 
-router = APIRouter(prefix="/v1", tags=["search"])
 _engine = None
 
 
@@ -23,12 +22,7 @@ def _get_engine():
     return _engine
 
 
-@router.post("/search", response_model=SearchResponse)
-async def search(
-    body: SearchRequest,
-    tenant: Tenant = Depends(get_current_tenant),
-    session: AsyncSession = Depends(get_session),
-):
+async def search(session: AsyncSession, tenant: Tenant, body: SearchRequest) -> SearchResponse:
     start = time.monotonic()
     engine = _get_engine()
     results = await engine.search(
@@ -44,12 +38,7 @@ async def search(
     )
 
 
-@router.get("/chunks/{chunk_id}")
-async def get_chunk(
-    chunk_id: uuid.UUID,
-    tenant: Tenant = Depends(get_current_tenant),
-    session: AsyncSession = Depends(get_session),
-):
+async def get_chunk(session: AsyncSession, tenant: Tenant, chunk_id: uuid.UUID) -> dict:
     result = await session.execute(
         select(Chunk).join(File).where(Chunk.id == chunk_id, File.tenant_id == tenant.id)
     )

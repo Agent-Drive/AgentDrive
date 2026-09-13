@@ -30,7 +30,13 @@ docker run -d --name agentdrive-test-db -e POSTGRES_PASSWORD=postgres -e POSTGRE
 ```
 src/agentdrive/
 ├── config.py            # Pydantic settings from .env
-├── api/                 # HTTP door (app, routers, schemas, auth)
+├── api/                 # HTTP door
+│   ├── app.py
+│   ├── dependencies.py
+│   ├── files/           # router, service, schemas
+│   ├── search/
+│   ├── keys/
+│   └── auth/
 ├── cli/                 # CLI door
 └── engine/              # data, pipeline, search
 

@@ -6,7 +6,10 @@ from fastapi.responses import PlainTextResponse
 
 from agentdrive.config import settings
 from agentdrive.engine.data.session import async_session_factory
-from agentdrive.api.routers import api_keys, auth, files, search
+from agentdrive.api.files.router import router as files_router
+from agentdrive.api.search.router import router as search_router
+from agentdrive.api.keys.router import router as keys_router
+from agentdrive.api.auth.router import router as auth_router
 from agentdrive.engine.pipeline.queue import reap_stuck_files, start_workers, stop_workers
 
 
@@ -26,10 +29,10 @@ def create_app() -> FastAPI:
         description="Agent-native file intelligence layer",
         lifespan=lifespan,
     )
-    app.include_router(api_keys.router)
-    app.include_router(auth.router)
-    app.include_router(files.router)
-    app.include_router(search.router)
+    app.include_router(keys_router)
+    app.include_router(auth_router)
+    app.include_router(files_router)
+    app.include_router(search_router)
 
     @app.get("/health")
     async def health():

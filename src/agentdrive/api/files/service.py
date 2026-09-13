@@ -1,33 +1,29 @@
 import uuid
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+
+from fastapi import HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from urllib.parse import quote
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from agentdrive.config import settings
-from agentdrive.engine.data.session import get_session
-from agentdrive.api.dependencies import get_current_tenant
 from agentdrive.engine.data.models.file import File as FileModel
 from agentdrive.engine.data.models.tenant import Tenant
 from agentdrive.engine.data.models.types import FileStatus
-from agentdrive.api.schemas.files import (
-    FileDetailResponse, FileListResponse, FileUploadResponse,
-    UploadUrlRequest, UploadUrlResponse,
+from agentdrive.api.files.schemas import (
+    FileDetailResponse,
+    FileListResponse,
+    FileUploadResponse,
+    UploadUrlRequest,
+    UploadUrlResponse,
 )
 from agentdrive.engine.pipeline.file_type import detect_content_type
 from agentdrive.engine.pipeline.queue import enqueue
 from agentdrive.engine.pipeline.storage import StorageService
 
-router = APIRouter(prefix="/v1/files", tags=["files"])
 
-
-@router.post("", status_code=202, response_model=FileUploadResponse)
-async def upload_file(
-    file: UploadFile = File(...),
-    tenant: Tenant = Depends(get_current_tenant),
-    session: AsyncSession = Depends(get_session),
-):
+async def upload_file(session: AsyncSession, tenant: Tenant, file: UploadFile) -> FileUploadResponse:
     data = await file.read()
     if len(data) > settings.max_upload_bytes:
         raise HTTPException(status_code=413, detail="File exceeds 32MB limit")
@@ -48,12 +44,9 @@ async def upload_file(
     return FileUploadResponse.model_validate(file_record)
 
 
-@router.post("/upload-url", status_code=201, response_model=UploadUrlResponse)
 async def create_upload_url(
-    body: UploadUrlRequest,
-    tenant: Tenant = Depends(get_current_tenant),
-    session: AsyncSession = Depends(get_session),
-):
+    session: AsyncSession, tenant: Tenant, body: UploadUrlRequest
+) -> UploadUrlResponse:
     if body.file_size > settings.max_signed_upload_bytes:
         raise HTTPException(
             status_code=413,
@@ -84,12 +77,9 @@ async def create_upload_url(
     )
 
 
-@router.post("/{file_id}/complete", status_code=200, response_model=FileUploadResponse)
 async def complete_upload(
-    file_id: uuid.UUID,
-    tenant: Tenant = Depends(get_current_tenant),
-    session: AsyncSession = Depends(get_session),
-):
+    session: AsyncSession, tenant: Tenant, file_id: uuid.UUID
+) -> FileUploadResponse:
     result = await session.execute(
         select(FileModel).where(
             FileModel.id == file_id,
@@ -112,12 +102,7 @@ async def complete_upload(
     return FileUploadResponse.model_validate(file_record)
 
 
-@router.get("/{file_id}", response_model=FileDetailResponse)
-async def get_file(
-    file_id: uuid.UUID,
-    tenant: Tenant = Depends(get_current_tenant),
-    session: AsyncSession = Depends(get_session),
-):
+async def get_file(session: AsyncSession, tenant: Tenant, file_id: uuid.UUID) -> FileDetailResponse:
     result = await session.execute(
         select(FileModel)
         .where(FileModel.id == file_id, FileModel.tenant_id == tenant.id)
@@ -128,12 +113,7 @@ async def get_file(
     return FileDetailResponse.model_validate(file_record)
 
 
-@router.get("/{file_id}/download")
-async def download_file(
-    file_id: uuid.UUID,
-    tenant: Tenant = Depends(get_current_tenant),
-    session: AsyncSession = Depends(get_session),
-):
+async def download_file(session: AsyncSession, tenant: Tenant, file_id: uuid.UUID) -> StreamingResponse:
     result = await session.execute(
         select(FileModel).where(FileModel.id == file_id, FileModel.tenant_id == tenant.id)
     )
@@ -161,11 +141,7 @@ async def download_file(
     )
 
 
-@router.get("", response_model=FileListResponse)
-async def list_files(
-    tenant: Tenant = Depends(get_current_tenant),
-    session: AsyncSession = Depends(get_session),
-):
+async def list_files(session: AsyncSession, tenant: Tenant) -> FileListResponse:
     query = select(FileModel).where(FileModel.tenant_id == tenant.id)
     query = query.order_by(FileModel.created_at.desc())
     result = await session.execute(query)
@@ -177,12 +153,7 @@ async def list_files(
     )
 
 
-@router.delete("/{file_id}", status_code=204)
-async def delete_file(
-    file_id: uuid.UUID,
-    tenant: Tenant = Depends(get_current_tenant),
-    session: AsyncSession = Depends(get_session),
-):
+async def delete_file(session: AsyncSession, tenant: Tenant, file_id: uuid.UUID) -> None:
     result = await session.execute(
         select(FileModel).where(FileModel.id == file_id, FileModel.tenant_id == tenant.id)
     )

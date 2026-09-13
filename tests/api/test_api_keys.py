@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from agentdrive.engine.data.models.api_key import ApiKey
 from agentdrive.engine.data.models.tenant import Tenant
-from agentdrive.api.auth import hash_api_key, parse_key_prefix
+from agentdrive.api.auth.service import hash_api_key, parse_key_prefix
 
 TEST_API_KEY = "sk-ad-testpre1restofthekeythatislongenough"
 

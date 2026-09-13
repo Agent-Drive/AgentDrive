@@ -1,4 +1,4 @@
-from agentdrive.api.schemas.files import FileDetailResponse
+from agentdrive.api.files.schemas import FileDetailResponse
 import uuid
 from datetime import datetime
 

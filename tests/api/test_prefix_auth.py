@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from agentdrive.engine.data.models.api_key import ApiKey
 from agentdrive.engine.data.models.tenant import Tenant
-from agentdrive.api.auth import generate_api_key, hash_api_key
+from agentdrive.api.auth.service import generate_api_key, hash_api_key
 
 NEW_FORMAT_KEY = None
 LEGACY_KEY = "old-style-key-no-prefix"

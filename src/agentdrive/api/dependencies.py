@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from agentdrive.engine.data.session import get_session
 from agentdrive.engine.data.models.api_key import ApiKey
 from agentdrive.engine.data.models.tenant import Tenant
-from agentdrive.api.auth import parse_key_prefix, verify_api_key
+from agentdrive.api.auth.service import parse_key_prefix, verify_api_key
 
 security = HTTPBearer()
 
