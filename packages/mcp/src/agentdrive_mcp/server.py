@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+from importlib.metadata import version as _package_version
 from pathlib import Path
 
 import httpx
@@ -184,7 +185,7 @@ async def main():
     async with stdio_server() as (read_stream, write_stream):
         init_options = InitializationOptions(
             server_name="agent-drive",
-            server_version="0.1.1",
+            server_version=_package_version("agentdrive-mcp"),
             capabilities=ServerCapabilities(tools={"listChanged": False}),
         )
         await server.run(read_stream, write_stream, init_options)
