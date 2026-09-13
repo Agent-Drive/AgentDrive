@@ -1,7 +1,7 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from agentdrive.main import app
+from agentdrive.api.app import app
 
 
 @pytest.mark.asyncio

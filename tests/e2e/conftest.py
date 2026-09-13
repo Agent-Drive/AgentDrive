@@ -1,6 +1,6 @@
 """E2E test fixtures. NO autouse mocks — hits real external APIs.
 
-Requires a running server: uv run uvicorn agentdrive.main:app --port 8080
+Requires a running server: uv run uvicorn agentdrive.api.app:app --port 8080
 """
 
 import uuid
@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 from agentdrive.config import settings
-from agentdrive.auth.service import generate_api_key
+from agentdrive.api.auth import generate_api_key
 
 SERVER_URL = "http://localhost:8080"
 
@@ -36,7 +36,7 @@ async def async_client() -> AsyncGenerator[AsyncClient, None]:
         resp = await client.get("/health")
         assert resp.status_code == 200, (
             f"Server not running at {SERVER_URL}. Start it with: "
-            "uv run uvicorn agentdrive.main:app --port 8080"
+            "uv run uvicorn agentdrive.api.app:app --port 8080"
         )
         yield client
 

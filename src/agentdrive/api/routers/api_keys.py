@@ -5,17 +5,17 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from agentdrive.data.session import get_session
+from agentdrive.engine.data.session import get_session
 from agentdrive.api.dependencies import get_current_tenant
-from agentdrive.data.models.api_key import ApiKey
-from agentdrive.data.models.tenant import Tenant
+from agentdrive.engine.data.models.api_key import ApiKey
+from agentdrive.engine.data.models.tenant import Tenant
 from agentdrive.api.schemas.api_keys import (
     ApiKeyCreate,
     ApiKeyCreateResponse,
     ApiKeyListResponse,
     ApiKeyResponse,
 )
-from agentdrive.auth.service import generate_api_key
+from agentdrive.api.auth import generate_api_key
 
 router = APIRouter(prefix="/v1/api-keys", tags=["api-keys"])
 

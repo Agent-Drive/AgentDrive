@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agentdrive.config import settings
-from agentdrive.data.session import get_session
-from agentdrive.data.models.api_key import ApiKey
-from agentdrive.data.models.tenant import Tenant
-from agentdrive.auth.service import generate_api_key
+from agentdrive.engine.data.session import get_session
+from agentdrive.engine.data.models.api_key import ApiKey
+from agentdrive.engine.data.models.tenant import Tenant
+from agentdrive.api.auth import generate_api_key
+from agentdrive.api.schemas.auth import ExchangeRequest, ExchangeResponse
 
 workos_client = None
 if settings.workos_api_key and settings.workos_client_id:
@@ -17,16 +17,6 @@ if settings.workos_api_key and settings.workos_client_id:
         api_key=settings.workos_api_key,
         client_id=settings.workos_client_id,
     )
-
-
-class ExchangeRequest(BaseModel):
-    access_token: str
-
-
-class ExchangeResponse(BaseModel):
-    api_key: str
-    email: str
-    tenant_id: str
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])

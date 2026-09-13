@@ -2,9 +2,9 @@ import uuid
 from unittest.mock import MagicMock, patch
 import pytest
 import pytest_asyncio
-from agentdrive.data.models.api_key import ApiKey
-from agentdrive.data.models.tenant import Tenant
-from agentdrive.auth.service import hash_api_key, parse_key_prefix
+from agentdrive.engine.data.models.api_key import ApiKey
+from agentdrive.engine.data.models.tenant import Tenant
+from agentdrive.api.auth import hash_api_key, parse_key_prefix
 
 TEST_API_KEY = "sk-ad-filetest1keyforunittestingfiles"
 

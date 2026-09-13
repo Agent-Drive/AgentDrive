@@ -2,9 +2,9 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from agentdrive.data.models.api_key import ApiKey
-from agentdrive.data.models.tenant import Tenant
-from agentdrive.auth.service import generate_api_key, hash_api_key
+from agentdrive.engine.data.models.api_key import ApiKey
+from agentdrive.engine.data.models.tenant import Tenant
+from agentdrive.api.auth import generate_api_key, hash_api_key
 
 NEW_FORMAT_KEY = None
 LEGACY_KEY = "old-style-key-no-prefix"
@@ -51,7 +51,7 @@ async def test_auth_with_revoked_key(client, db_session: AsyncSession, tenant_wi
     tenant, raw_key = tenant_with_new_key
     from datetime import datetime, timezone
     from sqlalchemy import update
-    from agentdrive.data.models.api_key import ApiKey as AK
+    from agentdrive.engine.data.models.api_key import ApiKey as AK
     await db_session.execute(update(AK).where(AK.tenant_id == tenant.id).values(revoked_at=datetime.now(timezone.utc)))
     await db_session.commit()
     response = await client.get("/v1/files", headers={"Authorization": f"Bearer {raw_key}"})

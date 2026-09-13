@@ -5,10 +5,10 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from agentdrive.data.session import get_session
-from agentdrive.data.models.api_key import ApiKey
-from agentdrive.data.models.tenant import Tenant
-from agentdrive.auth.service import parse_key_prefix, verify_api_key
+from agentdrive.engine.data.session import get_session
+from agentdrive.engine.data.models.api_key import ApiKey
+from agentdrive.engine.data.models.tenant import Tenant
+from agentdrive.api.auth import parse_key_prefix, verify_api_key
 
 security = HTTPBearer()
 
