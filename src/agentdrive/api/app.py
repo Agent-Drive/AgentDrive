@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -13,8 +14,20 @@ from agentdrive.api.auth.router import router as auth_router
 from agentdrive.engine.pipeline.queue import reap_stuck_files, start_workers, stop_workers
 
 
+def _load_gcp_credentials() -> None:
+    if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+        return
+    raw = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+    if not raw:
+        return
+    path = Path("/tmp/gcp-sa.json")
+    path.write_text(raw)
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(path)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _load_gcp_credentials()
     async with async_session_factory() as session:
         await reap_stuck_files(session)
     start_workers()
