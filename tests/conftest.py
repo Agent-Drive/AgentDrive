@@ -7,7 +7,7 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from agentdrive.models.base import Base
+from agentdrive.engine.data.models.base import Base
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
@@ -36,13 +36,13 @@ def mock_enrichment_and_embedding():
     async def _noop_reduce_summary(*args, **kwargs):
         return {"document_summary": "", "section_summaries": []}
 
-    with patch("agentdrive.services.ingest.embed_file_chunks", side_effect=_noop_embed), \
-         patch("agentdrive.services.ingest.embed_file_aliases", side_effect=_noop_embed), \
-         patch("agentdrive.services.ingest.enrich_chunks_with_summaries", side_effect=_noop_enrich), \
-         patch("agentdrive.services.ingest.generate_document_summary", side_effect=_noop_summary), \
-         patch("agentdrive.services.ingest.generate_table_aliases", side_effect=_noop_aliases), \
-         patch("agentdrive.services.ingest.generate_group_summary", side_effect=_noop_group_summary), \
-         patch("agentdrive.services.ingest.generate_reduce_summary", side_effect=_noop_reduce_summary):
+    with patch("agentdrive.engine.pipeline.ingest.embed_file_chunks", side_effect=_noop_embed), \
+         patch("agentdrive.engine.pipeline.ingest.embed_file_aliases", side_effect=_noop_embed), \
+         patch("agentdrive.engine.pipeline.ingest.enrich_chunks_with_summaries", side_effect=_noop_enrich), \
+         patch("agentdrive.engine.pipeline.ingest.generate_document_summary", side_effect=_noop_summary), \
+         patch("agentdrive.engine.pipeline.ingest.generate_table_aliases", side_effect=_noop_aliases), \
+         patch("agentdrive.engine.pipeline.ingest.generate_group_summary", side_effect=_noop_group_summary), \
+         patch("agentdrive.engine.pipeline.ingest.generate_reduce_summary", side_effect=_noop_reduce_summary):
         yield
 
 
@@ -152,8 +152,8 @@ async def db_session(db_session_factory) -> AsyncGenerator[AsyncSession, None]:
 @pytest_asyncio.fixture
 async def client(db_engine, db_session_factory) -> AsyncGenerator[AsyncClient, None]:
     """Test HTTP client with FastAPI app using test DB."""
-    from agentdrive.db.session import get_session
-    from agentdrive.main import create_app
+    from agentdrive.engine.data.session import get_session
+    from agentdrive.api.app import create_app
 
     app = create_app()
 
