@@ -4,7 +4,7 @@ import { PullQuote } from "./PullQuote";
 export function FeaturedArticle() {
   return (
     <article className="article-body font-geist">
-      <p className="text-xl">
+      <p>
         Most AI outputs are only as good as the data behind them. We&apos;re building the layer
         that fixes that — one domain at a time. The problem with general-purpose models isn&apos;t
         their reasoning; it&apos;s their lack of grounded, specific context.

@@ -132,10 +132,10 @@ html:has(.marketing-blog)::-webkit-scrollbar-thumb:hover,
 }
 
 .marketing-blog .article-body p {
-  font-size: 1.125rem;
-  line-height: 1.8;
-  color: rgba(240, 244, 248, 0.85);
-  margin-bottom: 2rem;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: rgba(240, 244, 248, 0.82);
+  margin-bottom: 1.25rem;
 }
 
 .marketing-blog .article-body h2,
@@ -144,21 +144,21 @@ html:has(.marketing-blog)::-webkit-scrollbar-thumb:hover,
 }
 
 .marketing-blog .article-body h2 {
-  font-size: 1.75rem;
+  font-size: 1.25rem;
   font-weight: 500;
   color: var(--ink);
-  margin: 3.5rem 0 1.5rem;
+  margin: 2.5rem 0 1rem;
   letter-spacing: -0.02em;
 }
 
 .marketing-blog .pull-quote {
-  font-size: 2rem;
-  line-height: 1.4;
+  font-size: 1.25rem;
+  line-height: 1.5;
   font-weight: 300;
   color: var(--accent);
-  margin: 4rem -2rem;
-  padding-left: 2rem;
-  border-left: 4px solid var(--accent);
+  margin: 2.5rem -1rem;
+  padding-left: 1.25rem;
+  border-left: 3px solid var(--accent);
   letter-spacing: -0.02em;
 }
 
