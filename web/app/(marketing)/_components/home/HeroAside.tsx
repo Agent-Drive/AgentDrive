@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AgentDriveMark } from "./AgentDriveMark";
 import { ArrowRightIcon } from "./ArrowRightIcon";
 import { NoiseCanvas } from "./NoiseCanvas";
 
@@ -8,8 +9,9 @@ export function HeroAside() {
       <NoiseCanvas />
       <div className="panel-gradient" style={{ position: "absolute", inset: 0, zIndex: -1 }} />
 
-      <div className="relative z-10 flex items-center gap-2">
-        <span className="font-geist text-[0.95rem] font-semibold tracking-tight text-[var(--ink)]">
+      <div className="relative z-10 flex items-center gap-2.5">
+        <AgentDriveMark className="h-7 w-[2.6rem] text-[var(--ink)]" />
+        <span className="font-geist text-[1.15rem] font-semibold tracking-tight text-[var(--ink)]">
           Agent Drive
         </span>
       </div>

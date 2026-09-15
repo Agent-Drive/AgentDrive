@@ -16,6 +16,7 @@ html:has(.marketing-home) body {
   --mono: var(--font-geist-mono), "Geist Mono", monospace;
   --font-sans: var(--sans);
   --font-mono: var(--mono);
+  --aside-width: clamp(27rem, 33vw, 32rem);
   background: var(--bg);
   color: var(--ink);
   font-family: var(--sans);
@@ -106,15 +107,15 @@ html:has(.marketing-home) body {
   position: fixed;
   top: 0;
   left: 0;
-  width: 420px;
+  width: var(--aside-width);
   height: 100vh;
   z-index: 50;
   flex-shrink: 0;
 }
 
 .marketing-home .layout-main {
-  margin-left: 420px;
-  width: calc(100% - 420px);
+  margin-left: var(--aside-width);
+  width: calc(100% - var(--aside-width));
   height: 100vh;
   overflow-y: auto;
   background: var(--bg);

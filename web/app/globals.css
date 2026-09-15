@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --paper: #f2f4f7;
-  --ink: #12151c;
-  --steel: #5c6573;
-  --rule: #c5ccd6;
-  --cobalt: #2458e6;
+  --paper: #efece3;
+  --ink: #0b0b0e;
+  --steel: #3f4d5a;
+  --rule: #c8c4b8;
+  --cobalt: #4970a9;
   --ready: #1f7a4d;
   --failed: #c23b22;
   --progress: #8a6a12;
@@ -20,15 +20,15 @@
   --color-ready: var(--ready);
   --color-failed: var(--failed);
   --color-progress: var(--progress);
-  --font-sans: var(--font-plex-sans);
-  --font-mono: var(--font-plex-mono);
-  --font-display: var(--font-instrument);
+  --font-sans: var(--font-work-sans);
+  --font-mono: var(--font-source-code);
+  --font-display: var(--font-quattrocento);
 }
 
 body {
   background: var(--paper);
   color: var(--ink);
-  font-family: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-work-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
 a:focus-visible,

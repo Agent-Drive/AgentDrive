@@ -1,24 +1,24 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans, Instrument_Serif } from "next/font/google";
+import { Quattrocento, Source_Code_Pro, Work_Sans } from "next/font/google";
 import { AuthKitProvider } from "@workos-inc/authkit-nextjs/components";
 import "./globals.css";
 
-const plexSans = IBM_Plex_Sans({
-  variable: "--font-plex-sans",
+const workSans = Work_Sans({
+  variable: "--font-work-sans",
   subsets: ["latin"],
   weight: ["400", "500", "600"],
 });
 
-const plexMono = IBM_Plex_Mono({
-  variable: "--font-plex-mono",
+const sourceCode = Source_Code_Pro({
+  variable: "--font-source-code",
   subsets: ["latin"],
   weight: ["400", "500"],
 });
 
-const instrument = Instrument_Serif({
-  variable: "--font-instrument",
+const quattrocento = Quattrocento({
+  variable: "--font-quattrocento",
   subsets: ["latin"],
-  weight: "400",
+  weight: ["400", "700"],
 });
 
 export const metadata: Metadata = {
@@ -30,7 +30,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${plexSans.variable} ${plexMono.variable} ${instrument.variable} h-full antialiased`}
+      className={`${workSans.variable} ${sourceCode.variable} ${quattrocento.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-paper text-ink">
         <AuthKitProvider>{children}</AuthKitProvider>

@@ -9,6 +9,6 @@ build/
 .claude/worktrees/
 .superpowers/
 .cursor/
-web/node_modules/
+node_modules/
 web/.next/
 web/.env*.local
