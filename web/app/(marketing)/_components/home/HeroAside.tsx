@@ -16,17 +16,17 @@ export function HeroAside() {
         </span>
       </div>
 
-      <div className="relative z-10 mb-12 flex flex-col justify-center">
+      <div className="relative z-10 mb-12 flex w-full flex-col justify-center">
         <h1 className="font-geist mb-6 text-[2.5rem] leading-[1.1] font-bold tracking-tight text-[var(--ink)]">
           Agent Drive builds datasets for humans and agents.
         </h1>
-        <p className="font-geist mb-10 max-w-sm text-lg leading-relaxed font-light text-[var(--ink-dim)]">
+        <p className="font-geist mb-10 text-lg leading-relaxed font-light text-[var(--ink-dim)]">
           Most AI outputs are only as good as the data behind them. We&apos;re building the layer
           that fixes that — one domain at a time.
         </p>
 
         <div className="flex flex-col items-start gap-4">
-          <div className="flex w-full items-center gap-4">
+          <div className="flex items-center gap-4">
             <a
               href="/sign-in"
               className="group flex items-center gap-2 rounded-md bg-[var(--accent)] px-5 py-3 font-mono text-[0.7rem] font-medium tracking-wide text-[var(--bg)] uppercase transition-all hover:brightness-105"
