@@ -308,7 +308,8 @@ html:has(.marketing-home) body {
   font-family: var(--mono);
   font-size: 0.65rem;
   color: rgba(255, 255, 255, 0.35);
-  padding: 0.6rem 0.85rem;
+  padding: 0.42rem 0.85rem;
+  line-height: 1.2;
   cursor: pointer;
   position: relative;
   transition: color 0.15s;
@@ -437,7 +438,7 @@ html:has(.marketing-home) body {
 .marketing-home .api-snippet-bar {
   background: rgba(255, 255, 255, 0.04);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 0.55rem 1rem;
+  padding: 0.15rem 1rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;

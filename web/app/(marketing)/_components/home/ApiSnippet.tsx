@@ -17,7 +17,7 @@ export function ApiSnippet() {
 
   return (
     <div className="api-snippet">
-      <div className="api-snippet-bar" style={{ paddingBottom: 0 }}>
+      <div className="api-snippet-bar">
         <span className="api-dot" style={{ background: "#ff5f57" }} />
         <span className="api-dot" style={{ background: "#febc2e" }} />
         <span className="api-dot" style={{ background: "#28c840" }} />
