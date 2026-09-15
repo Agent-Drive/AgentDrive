@@ -10,6 +10,8 @@ const TABS: { id: Pane; label: string }[] = [
   { id: "schema", label: "Schema" },
 ];
 
+const API_URL = "https://api.agentdrive.so/v1/ads";
+
 export function ApiSnippet() {
   const [pane, setPane] = useState<Pane>("request");
 
@@ -38,7 +40,7 @@ export function ApiSnippet() {
           <span className="token-comment"># Retrieve competitor ads by brand</span>
           {"\n"}
           <span className="token-method">curl</span>{" "}
-          <span className="token-url">https://api.mosaic.so/v1/ads</span>{" "}
+          <span className="token-url">{API_URL}</span>{" "}
           <span className="token-param">\</span>
           {"\n"}
           {"  -H "}
@@ -99,7 +101,7 @@ export function ApiSnippet() {
           {"\n"}
           {"  "}
           <span className="token-key">&quot;creative_url&quot;</span>:{" "}
-          <span className="token-val">&quot;https://cdn.mosaic.so/…&quot;</span>
+          <span className="token-val">&quot;https://cdn.agentdrive.so/…&quot;</span>
           {"\n"}
           <span className="token-key">{"}"}</span>
         </pre>

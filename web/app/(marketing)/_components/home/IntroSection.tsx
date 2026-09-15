@@ -3,7 +3,7 @@ export function IntroSection() {
     <section className="max-w-2xl">
       <div className="font-geist space-y-5 text-[1rem] leading-[1.65] text-[rgba(240,244,248,0.82)]">
         <p>
-          Mosaic builds{" "}
+          Agent Drive builds{" "}
           <strong className="font-medium text-[var(--ink)]">high-fidelity datasets</strong> for the
           people and systems that run modern marketing. Agents are only as good as their context —
           most are working with thin, generic data. We fix that.

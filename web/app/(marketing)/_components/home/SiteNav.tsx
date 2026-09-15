@@ -2,15 +2,15 @@ import Link from "next/link";
 import { ArrowRightIcon } from "./ArrowRightIcon";
 
 const LINKS = [
-  { href: "#ads", label: "Ads" },
+  { href: "#blog", label: "Blog" },
   { href: "#agent-access", label: "Docs" },
-  { href: "/pricing", label: "Pricing" },
+  { href: "#", label: "Pricing" },
 ] as const;
 
 export function MobileNav() {
   return (
     <nav className="mobile-nav" aria-label="Mobile navigation">
-      <span className="mobile-nav-logo">Mosaic</span>
+      <span className="mobile-nav-logo">Agent Drive</span>
       <div className="mobile-nav-links">
         {LINKS.map((link) => (
           <Link key={link.label} href={link.href}>
@@ -32,12 +32,12 @@ export function DesktopNav() {
           </Link>
         ))}
       </div>
-      <Link
+      <a
         href="/sign-in"
         className="flex items-center gap-2 rounded-md bg-[var(--ink)] px-3.5 py-1.5 font-mono text-[0.7rem] tracking-wide text-[var(--bg)] uppercase transition-opacity hover:opacity-80"
       >
         Sign in <ArrowRightIcon className="btn-arrow-icon h-3 w-3" />
-      </Link>
+      </a>
     </nav>
   );
 }

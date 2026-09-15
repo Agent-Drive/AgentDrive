@@ -1,7 +1,7 @@
 const TESTIMONIALS = [
   {
     quote:
-      "“Mosaic cut our competitive research time in half. We actually know what’s working in market before we brief creative.”",
+      "“Agent Drive cut our competitive research time in half. We actually know what’s working in market before we brief creative.”",
     initials: "SC",
     name: "Sarah Chen",
     role: "Head of Growth",

@@ -3,11 +3,11 @@ import { BlogSection } from "./BlogSection";
 import { DatasetSection } from "./DatasetSection";
 import { HeroAside } from "./HeroAside";
 import { IntroSection } from "./IntroSection";
-import { MosaicFooter } from "./MosaicFooter";
+import { HomeFooter } from "./HomeFooter";
 import { DesktopNav, MobileNav } from "./SiteNav";
 import { TestimonialsSection } from "./TestimonialsSection";
 
-export function MosaicPage() {
+export function Landing() {
   return (
     <>
       <HeroAside />
@@ -20,7 +20,7 @@ export function MosaicPage() {
           <AgentAccessSection />
           <TestimonialsSection />
           <BlogSection />
-          <MosaicFooter />
+          <HomeFooter />
         </div>
       </main>
     </>

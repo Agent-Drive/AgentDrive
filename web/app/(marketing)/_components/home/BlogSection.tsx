@@ -27,7 +27,7 @@ const POSTS = [
   },
   {
     date: "Feb 2025",
-    title: "Mosaic Ads: public beta now open",
+    title: "Agent Drive Ads: public beta now open",
     category: "Changelog",
     kind: "changelog",
   },

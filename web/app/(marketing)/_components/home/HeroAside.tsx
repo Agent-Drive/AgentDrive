@@ -10,13 +10,13 @@ export function HeroAside() {
 
       <div className="relative z-10 flex items-center gap-2">
         <span className="font-geist text-[0.95rem] font-semibold tracking-tight text-[var(--ink)]">
-          Mosaic
+          Agent Drive
         </span>
       </div>
 
       <div className="relative z-10 mb-12 flex flex-col justify-center">
         <h1 className="font-geist mb-6 text-[2.5rem] leading-[1.1] font-bold tracking-tight text-[var(--ink)]">
-          Mosaic builds datasets for humans and agents.
+          Agent Drive builds datasets for humans and agents.
         </h1>
         <p className="font-geist mb-10 max-w-sm text-lg leading-relaxed font-light text-[var(--ink-dim)]">
           Most AI outputs are only as good as the data behind them. We&apos;re building the layer
@@ -25,13 +25,13 @@ export function HeroAside() {
 
         <div className="flex flex-col items-start gap-4">
           <div className="flex w-full items-center gap-4">
-            <Link
+            <a
               href="/sign-in"
               className="group flex items-center gap-2 rounded-md bg-[var(--accent)] px-5 py-3 font-mono text-[0.7rem] font-medium tracking-wide text-[var(--bg)] uppercase transition-all hover:brightness-105"
             >
               Dashboard
               <ArrowRightIcon className="btn-arrow-icon h-3 w-3 text-[var(--bg)]" />
-            </Link>
+            </a>
             <Link
               href="#agent-access"
               className="border-b border-[var(--ink-dim)] bg-transparent pb-0.5 font-mono text-[0.7rem] font-medium tracking-wide text-[var(--ink)] uppercase transition-colors hover:border-[var(--ink)]"
@@ -44,7 +44,7 @@ export function HeroAside() {
 
       <div className="relative z-10">
         <div className="flex items-center gap-3 font-mono text-[0.62rem] tracking-widest text-[var(--ink-dim)] uppercase">
-          <span>mosaic.dev</span>
+          <span>agentdrive.so</span>
           <span className="text-[var(--ink-faint)]">—</span>
           <span>Est. 2024</span>
         </div>

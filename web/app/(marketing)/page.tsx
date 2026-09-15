@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { MosaicPage } from "./_components/mosaic/MosaicPage";
-import "./_components/mosaic/mosaic.css";
+import { Landing } from "./_components/home/Landing";
+import "./_styles/home.css";
 
 const geistSans = Geist({
   subsets: ["latin"],
@@ -16,14 +16,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Mosaic — The ad intelligence layer",
-  description: "Mosaic builds datasets for humans and agents.",
+  title: "Agent Drive — The ad intelligence layer",
+  description: "Agent Drive builds datasets for humans and agents.",
 };
 
 export default function HomePage() {
   return (
-    <div className={`${geistSans.variable} ${geistMono.variable} mosaic-home font-geist`}>
-      <MosaicPage />
+    <div className={`${geistSans.variable} ${geistMono.variable} marketing-home font-geist`}>
+      <Landing />
     </div>
   );
 }

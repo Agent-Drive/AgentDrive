@@ -19,7 +19,7 @@ export function DatasetSection() {
         <div className="dataset-card-inner">
           <div style={{ flex: 1 }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.75rem" }}>
-              <span className="dataset-title">Mosaic Ads</span>
+              <span className="dataset-title">Agent Drive Ads</span>
               <span className="dataset-beta">
                 <span
                   className="animate-pulse-green"

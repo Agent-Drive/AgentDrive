@@ -4,7 +4,7 @@ import { ApiSnippet } from "./ApiSnippet";
 const SURFACES = [
   { key: "MCP", val: "Native tool for Claude, GPT, Cursor" },
   { key: "API", val: "REST endpoint, structured JSON" },
-  { key: "CLI", val: "mosaic pull --brand nike --limit 50" },
+  { key: "CLI", val: "agentdrive pull --brand nike --limit 50" },
 ] as const;
 
 export function AgentAccessSection() {
