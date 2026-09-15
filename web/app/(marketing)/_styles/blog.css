@@ -194,6 +194,22 @@ html:has(.marketing-blog)::-webkit-scrollbar-thumb:hover,
   color: var(--accent);
 }
 
+.marketing-blog .hero-post {
+  border-bottom: 1px solid var(--ink-faint);
+  padding-bottom: 4rem;
+  margin-bottom: 4rem;
+}
+
+.marketing-blog .hero-bg {
+  background:
+    linear-gradient(180deg, rgba(9, 11, 16, 0.3) 0%, rgba(9, 11, 16, 1) 100%),
+    url("https://images.unsplash.com/photo-1620121692029-d088224ddc74?q=80&w=2832&auto=format&fit=crop")
+      center / cover;
+  height: 400px;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
 .marketing-blog .article-body code {
   font-family: var(--mono);
   font-size: 0.95em;

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { MagazineArticle } from "../_components/blog/MagazineArticle";
+import { BlogIndex } from "../_components/blog/BlogIndex";
 import "../_styles/blog.css";
 
 const geistSans = Geist({
@@ -16,15 +16,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Why we started with ads — Agent Drive",
-  description:
-    "Why Agent Drive started with ads: the case for domain-specific data over general-purpose models.",
+  title: "Blog — Agent Drive",
+  description: "Thoughts, updates, and strategies on domain-specific data and AI agents.",
 };
 
 export default function BlogPage() {
   return (
     <div className={`${geistSans.variable} ${geistMono.variable} marketing-blog font-geist`}>
-      <MagazineArticle />
+      <BlogIndex />
     </div>
   );
 }
