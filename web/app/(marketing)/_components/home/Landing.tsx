@@ -1,6 +1,5 @@
 import { AgentAccessSection } from "./AgentAccessSection";
 import { BlogSection } from "./BlogSection";
-import { DatasetSection } from "./DatasetSection";
 import { HeroAside } from "./HeroAside";
 import { IntroSection } from "./IntroSection";
 import { HomeFooter } from "./HomeFooter";
@@ -16,7 +15,6 @@ export function Landing() {
         <DesktopNav />
         <div className="content-wrap">
           <IntroSection />
-          <DatasetSection />
           <AgentAccessSection />
           <TestimonialsSection />
           <BlogSection />

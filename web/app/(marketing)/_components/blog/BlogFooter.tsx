@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 const LINKS = [
-  { href: "/#ads", label: "Ads Dataset" },
   { href: "/#agent-access", label: "Documentation" },
   { href: "/#", label: "Pricing" },
   { href: "#", label: "Twitter" },
