@@ -1,6 +1,5 @@
 import { ArticleHero } from "./ArticleHero";
 import { ArticleToc } from "./ArticleToc";
-import { BlogFooter } from "./BlogFooter";
 import { BlogNav } from "./BlogNav";
 import { FeaturedArticle } from "./FeaturedArticle";
 
@@ -15,7 +14,6 @@ export function MagazineArticle() {
           <FeaturedArticle />
           <aside className="right-sidebar" />
         </div>
-        <BlogFooter />
       </main>
     </>
   );

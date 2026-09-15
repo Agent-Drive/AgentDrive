@@ -1,5 +1,4 @@
 import { getFeaturedPost, getListingPosts } from "../../_data/posts";
-import { BlogFooter } from "./BlogFooter";
 import { BlogIndexHeader } from "./BlogIndexHeader";
 import { BlogNav } from "./BlogNav";
 import { FeaturedPost } from "./FeaturedPost";
@@ -14,7 +13,6 @@ export function BlogIndex() {
         <FeaturedPost post={getFeaturedPost()} />
         <PostList posts={getListingPosts()} />
       </main>
-      <BlogFooter />
     </>
   );
 }
