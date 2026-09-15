@@ -1,37 +1,5 @@
 import Link from "next/link";
-
-const POSTS = [
-  {
-    date: "Jun 2025",
-    title: "Why we started with ads: the case for domain-specific data",
-    category: "Blog",
-    kind: "blog",
-  },
-  {
-    date: "May 2025",
-    title: "Introducing the v2.0 Ads Dataset Schema",
-    category: "Changelog",
-    kind: "changelog",
-  },
-  {
-    date: "Apr 2025",
-    title: "Why we built our own tokenizer for ad creative",
-    category: "Blog",
-    kind: "blog",
-  },
-  {
-    date: "Mar 2025",
-    title: "How AI agents use structured ad corpora for better copy generation",
-    category: "Blog",
-    kind: "blog",
-  },
-  {
-    date: "Feb 2025",
-    title: "Agent Drive Ads: public beta now open",
-    category: "Changelog",
-    kind: "changelog",
-  },
-] as const;
+import { BLOG_POSTS } from "../../_data/posts";
 
 export function BlogSection() {
   return (
@@ -41,7 +9,7 @@ export function BlogSection() {
           Blog
         </span>
         <Link
-          href="#blog"
+          href="/blog"
           className="border-b border-[var(--ink-faint)] pb-px font-mono text-[0.65rem] tracking-wide text-[var(--ink-dim)] transition-colors hover:border-[var(--ink)] hover:text-[var(--ink)]"
         >
           All posts →
@@ -50,11 +18,11 @@ export function BlogSection() {
 
       <table className="w-full border-collapse">
         <tbody>
-          {POSTS.map((post, i) => (
+          {BLOG_POSTS.map((post, i) => (
             <tr
               key={post.title}
               className={
-                i === POSTS.length - 1
+                i === BLOG_POSTS.length - 1
                   ? "border-t border-b border-[var(--ink-faint)]"
                   : "border-t border-[var(--ink-faint)]"
               }
@@ -63,7 +31,7 @@ export function BlogSection() {
                 {post.date}
               </td>
               <td className="py-4 pr-8 text-[0.84rem] font-medium text-[var(--ink)]">
-                <Link href="#blog" className="transition-opacity hover:opacity-60">
+                <Link href={post.href} className="transition-opacity hover:opacity-60">
                   {post.title}
                 </Link>
               </td>

@@ -2,9 +2,9 @@ import Link from "next/link";
 import { ArrowRightIcon } from "./ArrowRightIcon";
 
 const LINKS = [
-  { href: "#blog", label: "Blog" },
-  { href: "#agent-access", label: "Docs" },
-  { href: "#", label: "Pricing" },
+  { href: "/blog", label: "Blog" },
+  { href: "/#agent-access", label: "Docs" },
+  { href: "/#", label: "Pricing" },
 ] as const;
 
 export function MobileNav() {

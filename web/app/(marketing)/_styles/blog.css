@@ -1,0 +1,200 @@
+html:has(.marketing-blog) {
+  color-scheme: dark;
+}
+
+html:has(.marketing-blog) body {
+  background: #090b10;
+  overflow-x: hidden;
+}
+
+.marketing-blog {
+  --bg: #090b10;
+  --ink: #f0f4f8;
+  --ink-dim: rgba(240, 244, 248, 0.5);
+  --ink-faint: rgba(240, 244, 248, 0.1);
+  --accent: #4a90e2;
+  --sans: var(--font-geist-sans), "Geist", -apple-system, sans-serif;
+  --mono: var(--font-geist-mono), "Geist Mono", monospace;
+  --font-sans: var(--sans);
+  --font-mono: var(--mono);
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100%;
+}
+
+.marketing-blog .font-geist {
+  font-family: var(--sans);
+}
+
+.marketing-blog .font-mono {
+  font-family: var(--mono);
+}
+
+.marketing-blog .btn-arrow-icon {
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: inline-flex;
+}
+
+.marketing-blog button:hover .btn-arrow-icon,
+.marketing-blog a:hover .btn-arrow-icon {
+  transform: translateX(4px);
+}
+
+.marketing-blog .glass-nav {
+  background: rgba(9, 11, 16, 0.85);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(240, 244, 248, 0.05);
+}
+
+html:has(.marketing-blog)::-webkit-scrollbar,
+.marketing-blog ::-webkit-scrollbar {
+  width: 6px;
+}
+
+html:has(.marketing-blog)::-webkit-scrollbar-track,
+.marketing-blog ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html:has(.marketing-blog)::-webkit-scrollbar-thumb,
+.marketing-blog ::-webkit-scrollbar-thumb {
+  background: rgba(240, 244, 248, 0.1);
+  border-radius: 3px;
+}
+
+html:has(.marketing-blog)::-webkit-scrollbar-thumb:hover,
+.marketing-blog ::-webkit-scrollbar-thumb:hover {
+  background: rgba(240, 244, 248, 0.2);
+}
+
+.marketing-blog .hero-banner {
+  height: 65vh;
+  min-height: 500px;
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(5, 6, 10, 0) 0%, rgba(5, 6, 10, 0.8) 70%, var(--bg) 100%),
+    url("https://images.unsplash.com/photo-1620121692029-d088224ddc74?q=80&w=2832&auto=format&fit=crop")
+      center / cover;
+  display: flex;
+  align-items: flex-end;
+  padding: 4rem 10vw;
+}
+
+.marketing-blog .article-layout {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) minmax(auto, 720px) minmax(200px, 1fr);
+  gap: 4rem;
+  padding: 4rem 10vw;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+@media (max-width: 1024px) {
+  .marketing-blog .article-layout {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    padding: 3rem 5vw;
+  }
+
+  .marketing-blog .margin-note {
+    position: static !important;
+    margin-bottom: 1.5rem;
+    border-left: 2px solid var(--accent);
+    padding-left: 1rem;
+  }
+
+  .marketing-blog .left-sidebar {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .marketing-blog .desktop-nav {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+
+  .marketing-blog .hero-banner {
+    padding: 6rem 6vw 3rem;
+    min-height: 420px;
+  }
+
+  .marketing-blog .hero-banner h1 {
+    font-size: 2.25rem;
+  }
+
+  .marketing-blog .pull-quote {
+    font-size: 1.5rem;
+    margin: 3rem 0;
+  }
+}
+
+.marketing-blog .article-body p {
+  font-size: 1.125rem;
+  line-height: 1.8;
+  color: rgba(240, 244, 248, 0.85);
+  margin-bottom: 2rem;
+}
+
+.marketing-blog .article-body h2,
+.marketing-blog .article-body [id] {
+  scroll-margin-top: 6rem;
+}
+
+.marketing-blog .article-body h2 {
+  font-size: 1.75rem;
+  font-weight: 500;
+  color: var(--ink);
+  margin: 3.5rem 0 1.5rem;
+  letter-spacing: -0.02em;
+}
+
+.marketing-blog .pull-quote {
+  font-size: 2rem;
+  line-height: 1.4;
+  font-weight: 300;
+  color: var(--accent);
+  margin: 4rem -2rem;
+  padding-left: 2rem;
+  border-left: 4px solid var(--accent);
+  letter-spacing: -0.02em;
+}
+
+.marketing-blog .margin-note {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: var(--ink-dim);
+  position: absolute;
+  width: 220px;
+  right: calc(-220px - 4rem);
+  top: 0;
+  border-top: 1px solid var(--ink-faint);
+  padding-top: 0.75rem;
+}
+
+.marketing-blog .relative-block {
+  position: relative;
+}
+
+.marketing-blog .section-break {
+  height: 1px;
+  background: var(--ink-faint);
+  width: 100px;
+  margin: 4rem auto;
+}
+
+.marketing-blog .meta-tag {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+}
+
+.marketing-blog .article-body code {
+  font-family: var(--mono);
+  font-size: 0.95em;
+}

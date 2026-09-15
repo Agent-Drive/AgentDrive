@@ -1,0 +1,42 @@
+export const BLOG_POSTS = [
+  {
+    slug: "why-we-started-with-ads",
+    href: "/blog",
+    date: "Jun 2025",
+    title: "Why we started with ads: the case for domain-specific data",
+    category: "Blog",
+    kind: "blog",
+  },
+  {
+    slug: "ads-dataset-schema-v2",
+    href: "/#blog",
+    date: "May 2025",
+    title: "Introducing the v2.0 Ads Dataset Schema",
+    category: "Changelog",
+    kind: "changelog",
+  },
+  {
+    slug: "ad-creative-tokenizer",
+    href: "/#blog",
+    date: "Apr 2025",
+    title: "Why we built our own tokenizer for ad creative",
+    category: "Blog",
+    kind: "blog",
+  },
+  {
+    slug: "structured-ad-corpora",
+    href: "/#blog",
+    date: "Mar 2025",
+    title: "How AI agents use structured ad corpora for better copy generation",
+    category: "Blog",
+    kind: "blog",
+  },
+  {
+    slug: "ads-public-beta",
+    href: "/#blog",
+    date: "Feb 2025",
+    title: "Agent Drive Ads: public beta now open",
+    category: "Changelog",
+    kind: "changelog",
+  },
+] as const;
