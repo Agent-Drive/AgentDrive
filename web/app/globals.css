@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #efece3;
+  --ink: #0b0b0e;
+  --steel: #3f4d5a;
+  --rule: #c8c4b8;
+  --cobalt: #4970a9;
+  --ready: #1f7a4d;
+  --failed: #c23b22;
+  --progress: #8a6a12;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-steel: var(--steel);
+  --color-rule: var(--rule);
+  --color-cobalt: var(--cobalt);
+  --color-ready: var(--ready);
+  --color-failed: var(--failed);
+  --color-progress: var(--progress);
+  --font-sans: var(--font-work-sans);
+  --font-mono: var(--font-source-code);
+  --font-display: var(--font-quattrocento);
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-work-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--cobalt);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

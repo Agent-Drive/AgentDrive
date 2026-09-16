@@ -12,6 +12,9 @@ cp .env.example .env  # fill in API keys
 # Run server
 uv run uvicorn agentdrive.api.app:app --port 8080
 
+# Run web (marketing + dashboard)
+cd web && npm run dev
+
 # Run tests (requires pgvector on port 5434)
 uv run pytest tests/ -v
 
@@ -41,6 +44,7 @@ src/agentdrive/
 └── engine/              # data, pipeline, search
 
 packages/mcp/            # standalone MCP client (the only MCP)
+web/                     # Next.js marketing (/) + dashboard (/app)
 ```
 
 ## Gotchas

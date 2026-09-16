@@ -8,3 +8,7 @@ dist/
 build/
 .claude/worktrees/
 .superpowers/
+.cursor/
+node_modules/
+web/.next/
+web/.env*.local
