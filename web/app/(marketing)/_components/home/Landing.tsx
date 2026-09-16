@@ -4,7 +4,6 @@ import { HeroAside } from "./HeroAside";
 import { IntroSection } from "./IntroSection";
 import { HomeFooter } from "./HomeFooter";
 import { DesktopNav, MobileNav } from "./SiteNav";
-import { TestimonialsSection } from "./TestimonialsSection";
 
 export function Landing() {
   return (
@@ -16,7 +15,6 @@ export function Landing() {
         <div className="content-wrap">
           <IntroSection />
           <AgentAccessSection />
-          <TestimonialsSection />
           <BlogSection />
           <HomeFooter />
         </div>
