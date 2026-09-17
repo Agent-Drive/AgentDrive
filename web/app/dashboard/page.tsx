@@ -1,5 +1,5 @@
-import { listFiles } from "./_lib/api";
-import { FileTable } from "./_components/FileTable";
+import { listFiles } from "@/lib/dashboard/api";
+import { FileTable } from "@/components/dashboard/FileTable";
 
 export default async function DashboardHomePage() {
   const data = await listFiles();

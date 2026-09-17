@@ -1,4 +1,4 @@
-import { getFeaturedPost, getListingPosts } from "../../_data/posts";
+import { getFeaturedPost, getListingPosts } from "@/lib/marketing/posts";
 import { BlogIndexHeader } from "./BlogIndexHeader";
 import { BlogNav } from "./BlogNav";
 import { FeaturedPost } from "./FeaturedPost";

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BLOG_POSTS } from "../../_data/posts";
+import { BLOG_POSTS } from "@/lib/marketing/posts";
 
 export function BlogSection() {
   return (

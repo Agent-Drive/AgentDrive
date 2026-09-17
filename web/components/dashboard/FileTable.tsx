@@ -1,6 +1,6 @@
 import Link from "next/link";
-import type { DriveFile } from "../_lib/types";
-import { formatBytes, formatWhen } from "../_lib/format";
+import type { DriveFile } from "@/lib/dashboard/types";
+import { formatBytes, formatWhen } from "@/lib/dashboard/format";
 import { EmptyFiles } from "./EmptyFiles";
 import { StatusBadge } from "./StatusBadge";
 

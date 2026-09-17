@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { BlogPost } from "../../_data/posts";
+import type { BlogPost } from "@/lib/marketing/posts";
 
 export function FeaturedPost({ post }: { post: BlogPost }) {
   return (

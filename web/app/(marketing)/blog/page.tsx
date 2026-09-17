@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { BlogIndex } from "../_components/blog/BlogIndex";
-import "../_styles/blog.css";
+import { BlogIndex } from "@/components/marketing/BlogIndex";
+import "@/styles/blog.css";
 
 export const metadata: Metadata = {
   title: "Blog — Agent Drive",

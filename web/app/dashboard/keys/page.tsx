@@ -1,7 +1,7 @@
-import { listApiKeys } from "../_lib/api";
-import { readAndClearNewKey } from "../_lib/actions";
-import { CreateKeyForm } from "../_components/CreateKeyForm";
-import { KeyList } from "../_components/KeyList";
+import { listApiKeys } from "@/lib/dashboard/api";
+import { readAndClearNewKey } from "@/lib/dashboard/actions";
+import { CreateKeyForm } from "@/components/dashboard/CreateKeyForm";
+import { KeyList } from "@/components/dashboard/KeyList";
 
 export default async function KeysPage() {
   const [data, newKey] = await Promise.all([listApiKeys(), readAndClearNewKey()]);
