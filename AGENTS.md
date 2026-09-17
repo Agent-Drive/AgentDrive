@@ -13,7 +13,7 @@ cp .env.example .env  # fill in API keys
 uv run uvicorn agentdrive.api.app:app --port 8080
 
 # Run web (marketing + dashboard)
-cd web && npm run dev
+cd web && pnpm dev
 
 # Run tests (requires pgvector on port 5434)
 uv run pytest tests/ -v
