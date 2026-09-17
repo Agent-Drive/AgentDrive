@@ -14,7 +14,7 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-svh">
       <header className="border-b border-rule px-6 py-4">
-        <Logo href="/app" />
+        <Logo href="/dashboard" />
       </header>
       <div className="mx-auto grid min-h-[calc(100svh-57px)] max-w-6xl grid-cols-1 md:grid-cols-[12rem_1fr]">
         <DashboardNav email={user.email} />

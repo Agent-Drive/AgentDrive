@@ -34,7 +34,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   if (res.status === 403) {
-    redirect("/app/access-denied");
+    redirect("/dashboard/access-denied");
   }
 
   if (res.status === 404) {

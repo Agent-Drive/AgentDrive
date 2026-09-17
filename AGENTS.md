@@ -44,7 +44,7 @@ src/agentdrive/
 └── engine/              # data, pipeline, search
 
 packages/mcp/            # standalone MCP client (the only MCP)
-web/                     # Next.js marketing (/) + dashboard (/app)
+web/                     # Next.js marketing (/) + dashboard (/dashboard)
 ```
 
 ## Gotchas

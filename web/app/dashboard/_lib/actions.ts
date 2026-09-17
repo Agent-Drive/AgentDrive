@@ -14,9 +14,9 @@ export async function createKeyAction(formData: FormData) {
     httpOnly: true,
     sameSite: "lax",
     maxAge: 60,
-    path: "/app/keys",
+    path: "/dashboard/keys",
   });
-  redirect("/app/keys");
+  redirect("/dashboard/keys");
 }
 
 export async function revokeKeyAction(formData: FormData) {
@@ -25,14 +25,14 @@ export async function revokeKeyAction(formData: FormData) {
     throw new Error("Missing key id");
   }
   await revokeApiKey(id);
-  redirect("/app/keys");
+  redirect("/dashboard/keys");
 }
 
 export async function readAndClearNewKey(): Promise<string | null> {
   const jar = await cookies();
   const value = jar.get(NEW_KEY_COOKIE)?.value ?? null;
   if (value) {
-    jar.delete({ name: NEW_KEY_COOKIE, path: "/app/keys" });
+    jar.delete({ name: NEW_KEY_COOKIE, path: "/dashboard/keys" });
   }
   return value;
 }

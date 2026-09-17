@@ -24,7 +24,7 @@ export function FileTable({ files }: { files: DriveFile[] }) {
           {files.map((file) => (
             <tr key={file.id} className="border-b border-rule">
               <td className="py-3 pr-4">
-                <Link href={`/app/files/${file.id}`} className="hover:text-cobalt">
+                <Link href={`/dashboard/files/${file.id}`} className="hover:text-cobalt">
                   {file.filename}
                 </Link>
               </td>

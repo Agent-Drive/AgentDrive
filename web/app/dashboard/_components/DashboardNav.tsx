@@ -5,10 +5,10 @@ export function DashboardNav({ email }: { email: string | null }) {
   return (
     <aside className="border-r border-rule px-6 py-8">
       <nav className="flex flex-col gap-3 text-sm">
-        <Link href="/app/files" className="hover:text-cobalt">
+        <Link href="/dashboard/files" className="hover:text-cobalt">
           Files
         </Link>
-        <Link href="/app/keys" className="hover:text-cobalt">
+        <Link href="/dashboard/keys" className="hover:text-cobalt">
           API keys
         </Link>
       </nav>
