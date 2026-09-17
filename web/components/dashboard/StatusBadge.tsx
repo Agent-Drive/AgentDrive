@@ -1,4 +1,4 @@
-import type { FileStatus } from "../_lib/types";
+import type { FileStatus } from "@/lib/dashboard/types";
 
 const STYLES: Record<string, string> = {
   ready: "text-ready",

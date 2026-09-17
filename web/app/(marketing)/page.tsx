@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { Landing } from "./_components/home/Landing";
-import "./_styles/home.css";
+import { Landing } from "@/components/marketing/Landing";
+import "@/styles/home.css";
 
 export const metadata: Metadata = {
   title: "Agent Drive — The ad intelligence layer",

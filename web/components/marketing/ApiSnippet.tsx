@@ -117,47 +117,47 @@ export function ApiSnippet() {
           {"  id:           "}
           <span className="token-val">string</span>
           {"       "}
-          <span className="token-comment">// unique ad identifier</span>
+          <span className="token-comment">{"// unique ad identifier"}</span>
           {"\n"}
           {"  brand:        "}
           <span className="token-val">string</span>
           {"       "}
-          <span className="token-comment">// normalized brand slug</span>
+          <span className="token-comment">{"// normalized brand slug"}</span>
           {"\n"}
           {"  copy:         "}
           <span className="token-val">string</span>
           {"       "}
-          <span className="token-comment">// full ad body text</span>
+          <span className="token-comment">{"// full ad body text"}</span>
           {"\n"}
           {"  hook:         "}
           <span className="token-val">string</span>
           {"       "}
-          <span className="token-comment">// opening line / hook</span>
+          <span className="token-comment">{"// opening line / hook"}</span>
           {"\n"}
           {"  cta:          "}
           <span className="token-val">string</span>
           {"       "}
-          <span className="token-comment">// call to action text</span>
+          <span className="token-comment">{"// call to action text"}</span>
           {"\n"}
           {"  platform:     "}
           <span className="token-val">Platform</span>
           {"     "}
-          <span className="token-comment">// meta | tiktok | youtube</span>
+          <span className="token-comment">{"// meta | tiktok | youtube"}</span>
           {"\n"}
           {"  format:       "}
           <span className="token-val">Format</span>
           {"       "}
-          <span className="token-comment">// video | image | carousel</span>
+          <span className="token-comment">{"// video | image | carousel"}</span>
           {"\n"}
           {"  first_seen:   "}
           <span className="token-val">ISODate</span>
           {"      "}
-          <span className="token-comment">// when first observed</span>
+          <span className="token-comment">{"// when first observed"}</span>
           {"\n"}
           {"  creative_url: "}
           <span className="token-val">string</span>
           {"       "}
-          <span className="token-comment">// CDN asset URL</span>
+          <span className="token-comment">{"// CDN asset URL"}</span>
           {"\n"}
           <span className="token-key">{"}"}</span>
         </pre>

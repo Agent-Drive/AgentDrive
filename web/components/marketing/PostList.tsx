@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { BlogPost } from "../../_data/posts";
+import type { BlogPost } from "@/lib/marketing/posts";
 import { PostRow } from "./PostRow";
 
 const INITIAL_VISIBLE = 2;

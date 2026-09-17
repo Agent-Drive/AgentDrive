@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
-import { ArrowRightIcon } from "../home/ArrowRightIcon";
+import { ArrowRightIcon } from "./ArrowRightIcon";
 
 const LINKS = [
   { href: "/blog", label: "Blog", current: true },

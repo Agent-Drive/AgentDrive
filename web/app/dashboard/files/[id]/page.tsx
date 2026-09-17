@@ -1,6 +1,6 @@
-import { getFile } from "../../_lib/api";
-import { formatBytes, formatWhen } from "../../_lib/format";
-import { StatusBadge } from "../../_components/StatusBadge";
+import { getFile } from "@/lib/dashboard/api";
+import { formatBytes, formatWhen } from "@/lib/dashboard/format";
+import { StatusBadge } from "@/components/dashboard/StatusBadge";
 
 export default async function FileDetailPage({
   params,

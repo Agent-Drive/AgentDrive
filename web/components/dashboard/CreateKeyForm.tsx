@@ -1,4 +1,4 @@
-import { createKeyAction } from "../_lib/actions";
+import { createKeyAction } from "@/lib/dashboard/actions";
 
 export function CreateKeyForm() {
   return (

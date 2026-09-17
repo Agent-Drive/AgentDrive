@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { MagazineArticle } from "../../_components/blog/MagazineArticle";
-import { FEATURED_SLUG } from "../../_data/posts";
-import "../../_styles/blog.css";
+import { MagazineArticle } from "@/components/marketing/MagazineArticle";
+import { FEATURED_SLUG } from "@/lib/marketing/posts";
+import "@/styles/blog.css";
 
 export function generateStaticParams() {
   return [{ slug: FEATURED_SLUG }];

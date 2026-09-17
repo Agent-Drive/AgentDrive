@@ -1,5 +1,5 @@
 import { withAuth } from "@workos-inc/authkit-nextjs";
-import { DashboardNav } from "./_components/DashboardNav";
+import { DashboardNav } from "@/components/dashboard/DashboardNav";
 
 export const dynamic = "force-dynamic";
 

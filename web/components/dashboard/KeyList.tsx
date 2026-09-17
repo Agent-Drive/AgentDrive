@@ -1,6 +1,6 @@
-import type { ApiKey } from "../_lib/types";
-import { formatWhen } from "../_lib/format";
-import { revokeKeyAction } from "../_lib/actions";
+import type { ApiKey } from "@/lib/dashboard/types";
+import { formatWhen } from "@/lib/dashboard/format";
+import { revokeKeyAction } from "@/lib/dashboard/actions";
 
 export function KeyList({ keys }: { keys: ApiKey[] }) {
   if (keys.length === 0) {
