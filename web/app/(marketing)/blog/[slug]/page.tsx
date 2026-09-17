@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { MagazineArticle } from "@/components/marketing/MagazineArticle";
 import { FEATURED_SLUG } from "@/lib/marketing/posts";
-import "@/styles/blog.css";
+import "@/styles/marketing/blog.css";
 
 export function generateStaticParams() {
   return [{ slug: FEATURED_SLUG }];
