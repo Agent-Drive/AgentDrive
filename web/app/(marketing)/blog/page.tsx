@@ -1,19 +1,6 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import { BlogIndex } from "../_components/blog/BlogIndex";
 import "../_styles/blog.css";
-
-const geistSans = Geist({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
-  variable: "--font-geist-sans",
-});
-
-const geistMono = Geist_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  variable: "--font-geist-mono",
-});
 
 export const metadata: Metadata = {
   title: "Blog — Agent Drive",
@@ -22,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function BlogPage() {
   return (
-    <div className={`${geistSans.variable} ${geistMono.variable} marketing-blog font-geist`}>
+    <div className="marketing-blog">
       <BlogIndex />
     </div>
   );

@@ -1,21 +1,8 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import { notFound } from "next/navigation";
 import { MagazineArticle } from "../../_components/blog/MagazineArticle";
 import { FEATURED_SLUG } from "../../_data/posts";
 import "../../_styles/blog.css";
-
-const geistSans = Geist({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
-  variable: "--font-geist-sans",
-});
-
-const geistMono = Geist_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  variable: "--font-geist-mono",
-});
 
 export function generateStaticParams() {
   return [{ slug: FEATURED_SLUG }];
@@ -49,7 +36,7 @@ export default async function BlogArticlePage({
   }
 
   return (
-    <div className={`${geistSans.variable} ${geistMono.variable} marketing-blog font-geist`}>
+    <div className="marketing-blog">
       <MagazineArticle />
     </div>
   );
