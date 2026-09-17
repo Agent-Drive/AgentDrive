@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AgentDriveMark } from "./AgentDriveMark";
+import { Logo } from "@/components/Logo";
 import { ArrowRightIcon } from "./ArrowRightIcon";
 import { NoiseCanvas } from "./NoiseCanvas";
 
@@ -10,7 +10,7 @@ export function HeroAside() {
       <div className="panel-gradient" style={{ position: "absolute", inset: 0, zIndex: -1 }} />
 
       <div className="relative z-10 flex items-center gap-2.5">
-        <AgentDriveMark className="h-7 w-7 text-[var(--ink)]" />
+        <Logo className="h-7 w-7 text-[var(--ink)]" />
         <span className="font-geist text-[1.15rem] font-semibold tracking-tight text-[var(--ink)]">
           Agent Drive
         </span>

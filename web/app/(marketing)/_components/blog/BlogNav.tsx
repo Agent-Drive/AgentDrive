@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AgentDriveMark } from "../home/AgentDriveMark";
+import { Logo } from "@/components/Logo";
 import { ArrowRightIcon } from "../home/ArrowRightIcon";
 
 const LINKS = [
@@ -12,7 +12,7 @@ export function BlogNav() {
   return (
     <nav className="desktop-nav glass-nav fixed top-0 z-50 flex w-full items-center justify-between px-8 py-5">
       <Link href="/" className="flex shrink-0 items-center gap-2.5 whitespace-nowrap text-[var(--ink)]">
-        <AgentDriveMark className="h-7 w-7 text-[var(--ink)]" />
+        <Logo className="h-7 w-7 text-[var(--ink)]" />
         <span className="font-geist text-[1.15rem] font-semibold tracking-tight text-[var(--ink)]">
           Agent Drive
         </span>
