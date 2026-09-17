@@ -18,7 +18,7 @@ export function HeroAside() {
 
       <div className="relative z-10 mb-12 flex w-full flex-col justify-center">
         <h1 className="font-geist mb-6 text-[2.5rem] leading-[1.1] font-bold tracking-tight text-[var(--ink)]">
-          Agent Drive builds datasets for humans and agents.
+          Smarter file retrieval for AI agents.
         </h1>
         <p className="font-geist mb-10 text-lg leading-relaxed font-light text-[var(--ink-dim)]">
           Most AI outputs are only as good as the data behind them. We&apos;re building the layer
