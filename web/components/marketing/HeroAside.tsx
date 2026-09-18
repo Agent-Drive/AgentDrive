@@ -28,7 +28,7 @@ export function HeroAside() {
         <div className="flex flex-col items-start gap-4">
           <div className="flex items-center gap-4">
             <a
-              href="/sign-in"
+              href="/auth/sign-in"
               className="group flex items-center gap-2 rounded-md bg-[var(--accent)] px-5 py-3 font-mono text-[0.7rem] font-medium tracking-wide text-[var(--bg)] uppercase transition-all hover:brightness-105"
             >
               Dashboard

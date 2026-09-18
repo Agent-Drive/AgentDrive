@@ -14,7 +14,7 @@ const API_URL = process.env.AGENTDRIVE_API_URL ?? "http://localhost:8080";
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const { accessToken } = await withAuth({ ensureSignedIn: true });
   if (!accessToken) {
-    redirect("/sign-in");
+    redirect("/auth/sign-in");
   }
 
   const headers = new Headers(init?.headers);
@@ -30,7 +30,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (res.status === 401) {
-    await signOut({ returnTo: "/sign-in" });
+    await signOut({ returnTo: "/auth/sign-in" });
   }
 
   if (res.status === 403) {

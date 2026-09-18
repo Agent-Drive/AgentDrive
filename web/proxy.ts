@@ -6,7 +6,7 @@ export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/dashboard") && !session.user) {
-    return handleAuthkitHeaders(request, headers, { redirect: "/sign-in" });
+    return handleAuthkitHeaders(request, headers, { redirect: "/auth/sign-in" });
   }
 
   return handleAuthkitHeaders(request, headers);
