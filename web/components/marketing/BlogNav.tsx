@@ -31,7 +31,7 @@ export function BlogNav() {
           ))}
         </div>
         <a
-          href="/sign-in"
+          href="/auth/sign-in"
           className="flex items-center gap-2 rounded-md bg-[var(--ink)] px-3.5 py-1.5 font-mono text-[0.7rem] tracking-wide text-[var(--bg)] uppercase transition-opacity hover:opacity-80"
         >
           Sign in <ArrowRightIcon className="btn-arrow-icon h-3 w-3" />
