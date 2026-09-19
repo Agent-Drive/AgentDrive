@@ -150,6 +150,11 @@ html:has(.ops-dashboard) body {
   background: var(--surface);
 }
 
+.ops-dashboard .ops-search input:focus,
+.ops-dashboard .ops-search input:focus-visible {
+  outline: none;
+}
+
 .ops-dashboard .api-name {
   font-family: var(--mono);
   font-size: 0.65rem;
