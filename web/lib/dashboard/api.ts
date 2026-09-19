@@ -7,6 +7,7 @@ import type {
   ApiKeyListResponse,
   DriveFile,
   FileListResponse,
+  SearchResponse,
 } from "./types";
 
 const API_URL = process.env.AGENTDRIVE_API_URL ?? "http://localhost:8080";
@@ -54,6 +55,35 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
 export function listFiles() {
   return apiFetch<FileListResponse>("/v1/files");
+}
+
+export async function listFilesOrEmpty(): Promise<FileListResponse> {
+  const { accessToken } = await withAuth({ ensureSignedIn: true });
+  if (!accessToken) {
+    redirect("/auth/sign-in");
+  }
+
+  const res = await fetch(`${API_URL}/v1/files`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: "no-store",
+  });
+
+  if (res.status === 401) {
+    await signOut({ returnTo: "/auth/sign-in" });
+  }
+
+  if (!res.ok) {
+    return { files: [], total: 0 };
+  }
+
+  return res.json() as Promise<FileListResponse>;
+}
+
+export function searchFiles(query: string, topK = 8) {
+  return apiFetch<SearchResponse>("/v1/search", {
+    method: "POST",
+    body: JSON.stringify({ query, top_k: topK }),
+  });
 }
 
 export function getFile(fileId: string) {

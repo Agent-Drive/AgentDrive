@@ -1,0 +1,252 @@
+html:has(.ops-dashboard) {
+  color-scheme: dark;
+}
+
+html:has(.ops-dashboard) body {
+  background: #090b10;
+  overflow: hidden;
+}
+
+.ops-dashboard {
+  --bg: #090b10;
+  --surface: #101520;
+  --border: rgba(240, 244, 248, 0.08);
+  --ink: #f0f4f8;
+  --ink-dim: rgba(240, 244, 248, 0.5);
+  --accent: #4a90e2;
+  --accent-dim: rgba(74, 144, 226, 0.2);
+  --success: #28c840;
+  --warning: #febc2e;
+  --danger: #ff5f57;
+  --sans: var(--font-geist-sans), "Geist", -apple-system, sans-serif;
+  --mono: var(--font-geist-mono), "Geist Mono", monospace;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.ops-dashboard .font-geist {
+  font-family: var(--sans);
+}
+
+.ops-dashboard .font-mono {
+  font-family: var(--mono);
+}
+
+.ops-dashboard ::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.ops-dashboard ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ops-dashboard ::-webkit-scrollbar-thumb {
+  background: rgba(240, 244, 248, 0.15);
+  border-radius: 2px;
+}
+
+.ops-grid {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  grid-template-rows: minmax(0, 1fr);
+  height: 100dvh;
+}
+
+.ops-dashboard .panel {
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ops-dashboard .panel-content {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 0.75rem;
+}
+
+.ops-dashboard .data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+}
+
+.ops-dashboard .data-table th,
+.ops-dashboard .data-table td {
+  padding: 0.4rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.ops-dashboard .data-table th {
+  color: var(--ink-dim);
+  font-weight: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(255, 255, 255, 0.02);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.ops-dashboard .data-table td {
+  color: rgba(240, 244, 248, 0.85);
+}
+
+.ops-dashboard .data-table tr:hover td {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ops-dashboard .status-badge {
+  display: inline-block;
+  padding: 0.1rem 0.3rem;
+  border-radius: 2px;
+  font-size: 0.55rem;
+  text-transform: uppercase;
+}
+
+.ops-dashboard .status-ok {
+  background: rgba(40, 200, 64, 0.15);
+  color: var(--success);
+}
+
+.ops-dashboard .status-sync {
+  background: rgba(74, 144, 226, 0.15);
+  color: var(--accent);
+}
+
+.ops-dashboard .status-err {
+  background: rgba(255, 95, 87, 0.15);
+  color: var(--danger);
+}
+
+.ops-dashboard .api-card,
+.ops-dashboard .ops-search {
+  box-sizing: border-box;
+  height: 38px;
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+}
+
+.ops-dashboard .api-card {
+  border-radius: 4px;
+  padding: 0 0.75rem;
+  gap: 0.75rem;
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.ops-dashboard .ops-search {
+  border-radius: 4px;
+  padding: 0 0.75rem;
+  gap: 0.5rem;
+  background: var(--surface);
+}
+
+.ops-dashboard .api-name {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--ink);
+}
+
+.ops-dashboard .api-latency {
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  color: var(--ink-dim);
+}
+
+.ops-dashboard .sparkline {
+  width: 60px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 2px;
+  position: relative;
+  overflow: hidden;
+}
+
+.ops-dashboard .spark-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 100%;
+  background: rgba(74, 144, 226, 0.3);
+}
+
+.ops-dashboard .search-hit {
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 0.85rem;
+}
+
+.ops-dashboard .search-hit:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ops-dashboard .ops-input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  outline: none;
+}
+
+.ops-dashboard .ops-input::placeholder {
+  color: var(--ink-dim);
+}
+
+.ops-dashboard .ops-button {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border: 1px solid transparent;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.ops-dashboard .ops-button:hover {
+  background: rgba(74, 144, 226, 0.3);
+}
+
+.ops-dashboard .ops-link {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.ops-dashboard .ops-link:hover {
+  color: var(--accent);
+}
+
+.ops-dashboard a:focus-visible,
+.ops-dashboard button:focus-visible,
+.ops-dashboard input:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 768px) {
+  .ops-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .ops-dashboard .sider {
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ops-dashboard * {
+    transition: none !important;
+  }
+}

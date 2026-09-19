@@ -7,16 +7,14 @@ export default function DashboardError({
   reset: () => void;
 }) {
   return (
-    <main>
-      <h1 className="font-display text-4xl">Dashboard failed</h1>
-      <p className="mt-3 text-steel">The request did not complete. Try again.</p>
-      <button
-        type="button"
-        onClick={reset}
-        className="mt-6 border border-ink px-3 py-1.5 text-sm"
-      >
+    <>
+      <h1 className="font-geist text-lg font-medium text-[var(--ink)]">Dashboard failed</h1>
+      <p className="mt-2 text-[0.75rem] text-[var(--ink-dim)]">
+        The request did not complete. Try again.
+      </p>
+      <button type="button" onClick={reset} className="ops-button mt-5">
         Try again
       </button>
-    </main>
+    </>
   );
 }

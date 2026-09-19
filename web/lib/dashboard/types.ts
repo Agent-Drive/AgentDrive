@@ -48,3 +48,24 @@ export type ApiKeyCreateResponse = {
   created_at: string;
   expires_at: string | null;
 };
+
+export type SearchHit = {
+  chunk_id: string;
+  content: string;
+  token_count: number;
+  score: number;
+  content_type: string;
+  parent_content: string | null;
+  parent_token_count: number | null;
+  provenance: {
+    file_id?: string;
+    filename?: string;
+    [key: string]: unknown;
+  };
+};
+
+export type SearchResponse = {
+  results: SearchHit[];
+  query_tokens: number;
+  search_time_ms: number;
+};
