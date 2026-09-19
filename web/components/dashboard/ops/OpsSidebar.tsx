@@ -104,7 +104,7 @@ export function OpsSidebar({ usedBytes, firstName, lastName, email }: OpsSidebar
                   {displayName(firstName, lastName, email)}
                 </span>
                 <span className="mt-0.5 font-mono text-[0.6rem] leading-tight text-[var(--ink-dim)]">
-                  Admin
+                  Basic
                 </span>
               </div>
               <ChevronRightIcon className="ml-auto h-3.5 w-3.5 text-[var(--ink-dim)] opacity-0 transition-opacity group-hover:opacity-100" />
