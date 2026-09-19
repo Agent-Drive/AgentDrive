@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     workos_api_key: str = ""
     workos_client_id: str = ""
+    public_base_url: str = "http://localhost:8080"
     auto_provision_tenants: bool = True
     ingestion_workers: int = 3
     ingestion_timeout_seconds: int = 900
