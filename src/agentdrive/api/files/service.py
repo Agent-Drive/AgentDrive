@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import HTTPException, UploadFile
+from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 from urllib.parse import quote
 from sqlalchemy import select
@@ -23,27 +23,6 @@ from agentdrive.engine.pipeline.queue import enqueue
 from agentdrive.engine.pipeline.storage import StorageService
 
 
-async def upload_file(session: AsyncSession, tenant: Tenant, file: UploadFile) -> FileUploadResponse:
-    data = await file.read()
-    if len(data) > settings.max_upload_bytes:
-        raise HTTPException(status_code=413, detail="File exceeds 32MB limit")
-    content_type = detect_content_type(file.filename or "unknown", file.content_type)
-    file_id = uuid.uuid4()
-    storage = StorageService()
-    gcs_path = storage.upload(tenant.id, file_id, file.filename or "unknown", data, file.content_type or "")
-    file_record = FileModel(
-        id=file_id, tenant_id=tenant.id,
-        filename=file.filename or "unknown", content_type=content_type,
-        gcs_path=gcs_path, file_size=len(data), status="pending",
-    )
-    session.add(file_record)
-    await session.commit()
-    await session.refresh(file_record)
-
-    enqueue(file_record.id)
-    return FileUploadResponse.model_validate(file_record)
-
-
 async def create_upload_url(
     session: AsyncSession, tenant: Tenant, body: UploadUrlRequest
 ) -> UploadUrlResponse:
@@ -62,7 +41,8 @@ async def create_upload_url(
     )
     file_record = FileModel(
         id=file_id, tenant_id=tenant.id,
-        filename=body.filename, content_type=body.content_type,
+        filename=body.filename,
+        content_type=detect_content_type(body.filename, body.content_type),
         gcs_path=gcs_path, file_size=body.file_size,
         status=FileStatus.UPLOADING,
     )

@@ -1,10 +1,13 @@
 import uuid
 from unittest.mock import MagicMock, patch
+
 import pytest
 import pytest_asyncio
-from agentdrive.engine.data.models.api_key import ApiKey
-from agentdrive.engine.data.models.tenant import Tenant
+
 from agentdrive.api.auth.service import hash_api_key, parse_key_prefix
+from agentdrive.engine.data.models.api_key import ApiKey
+from agentdrive.engine.data.models.file import File as FileModel
+from agentdrive.engine.data.models.tenant import Tenant
 
 TEST_API_KEY = "sk-ad-filetest1keyforunittestingfiles"
 
@@ -29,51 +32,45 @@ async def authed_client(client, db_session):
     return client, tenant
 
 
+async def _seed_file(db_session, tenant, filename="test.txt", content_type="text", file_size=5):
+    record = FileModel(
+        tenant_id=tenant.id,
+        filename=filename,
+        content_type=content_type,
+        gcs_path=f"tenants/{tenant.id}/files/{uuid.uuid4()}/{filename}",
+        file_size=file_size,
+        status="pending",
+    )
+    db_session.add(record)
+    await db_session.commit()
+    await db_session.refresh(record)
+    return record
+
+
 @pytest.mark.asyncio
-@patch("agentdrive.api.files.service.StorageService")
-async def test_upload_file(mock_storage_cls, authed_client):
-    client, tenant = authed_client
-    mock_storage = MagicMock()
-    mock_storage.upload.return_value = "tenants/abc/files/def/test.pdf"
-    mock_storage_cls.return_value = mock_storage
+async def test_multipart_upload_rejected(authed_client):
+    client, _tenant = authed_client
     response = await client.post(
         "/v1/files",
         files={"file": ("test.pdf", b"fake pdf content", "application/pdf")},
     )
-    assert response.status_code == 202
-    data = response.json()
-    assert data["filename"] == "test.pdf"
-    assert data["content_type"] == "pdf"
-    assert data["status"] == "pending"
-    assert "id" in data
+    assert response.status_code == 405
 
 
 @pytest.mark.asyncio
-@patch("agentdrive.api.files.service.StorageService")
-async def test_get_file_status(mock_storage_cls, authed_client):
+async def test_get_file_status(authed_client, db_session):
     client, tenant = authed_client
-    mock_storage = MagicMock()
-    mock_storage.upload.return_value = "path"
-    mock_storage_cls.return_value = mock_storage
-    upload = await client.post(
-        "/v1/files",
-        files={"file": ("test.txt", b"hello", "text/plain")},
-    )
-    file_id = upload.json()["id"]
-    response = await client.get(f"/v1/files/{file_id}")
+    record = await _seed_file(db_session, tenant)
+    response = await client.get(f"/v1/files/{record.id}")
     assert response.status_code == 200
     assert response.json()["status"] == "pending"
 
 
 @pytest.mark.asyncio
-@patch("agentdrive.api.files.service.StorageService")
-async def test_list_files(mock_storage_cls, authed_client):
+async def test_list_files(authed_client, db_session):
     client, tenant = authed_client
-    mock_storage = MagicMock()
-    mock_storage.upload.return_value = "path"
-    mock_storage_cls.return_value = mock_storage
-    await client.post("/v1/files", files={"file": ("a.txt", b"a", "text/plain")})
-    await client.post("/v1/files", files={"file": ("b.txt", b"b", "text/plain")})
+    await _seed_file(db_session, tenant, filename="a.txt")
+    await _seed_file(db_session, tenant, filename="b.txt")
     response = await client.get("/v1/files")
     assert response.status_code == 200
     assert response.json()["total"] >= 2
@@ -81,55 +78,41 @@ async def test_list_files(mock_storage_cls, authed_client):
 
 @pytest.mark.asyncio
 @patch("agentdrive.api.files.service.StorageService")
-async def test_delete_file(mock_storage_cls, authed_client):
+async def test_delete_file(mock_storage_cls, authed_client, db_session):
     client, tenant = authed_client
     mock_storage = MagicMock()
-    mock_storage.upload.return_value = "path"
     mock_storage_cls.return_value = mock_storage
-    upload = await client.post("/v1/files", files={"file": ("del.txt", b"x", "text/plain")})
-    file_id = upload.json()["id"]
-    response = await client.delete(f"/v1/files/{file_id}")
+    record = await _seed_file(db_session, tenant, filename="del.txt")
+    response = await client.delete(f"/v1/files/{record.id}")
     assert response.status_code == 204
     mock_storage.delete.assert_called_once()
 
 
 @pytest.mark.asyncio
-@patch("agentdrive.api.files.service.StorageService")
-async def test_get_file_includes_updated_at(mock_storage_cls, authed_client):
+async def test_get_file_includes_updated_at(authed_client, db_session):
     client, tenant = authed_client
-    mock_storage = MagicMock()
-    mock_storage.upload.return_value = "path"
-    mock_storage_cls.return_value = mock_storage
-    upload = await client.post(
-        "/v1/files",
-        files={"file": ("test.txt", b"hello", "text/plain")},
-    )
-    file_id = upload.json()["id"]
-    response = await client.get(f"/v1/files/{file_id}")
+    record = await _seed_file(db_session, tenant)
+    response = await client.get(f"/v1/files/{record.id}")
     assert response.status_code == 200
     data = response.json()
     assert "updated_at" in data
     assert data["updated_at"] is not None
 
 
-
 @pytest.mark.asyncio
 @patch("agentdrive.api.files.service.StorageService")
-async def test_download_file(mock_storage_cls, authed_client):
+async def test_download_file(mock_storage_cls, authed_client, db_session):
     client, tenant = authed_client
     file_content = b"hello world file content"
     mock_storage = MagicMock()
-    mock_storage.upload.return_value = "fake/path"
     mock_storage.download_stream.return_value = iter([file_content])
     mock_storage_cls.return_value = mock_storage
 
-    resp = await client.post(
-        "/v1/files",
-        files={"file": ("test.txt", file_content, "text/plain")},
+    record = await _seed_file(
+        db_session, tenant, filename="test.txt", file_size=len(file_content)
     )
-    file_id = resp.json()["id"]
 
-    dl_resp = await client.get(f"/v1/files/{file_id}/download")
+    dl_resp = await client.get(f"/v1/files/{record.id}/download")
     assert dl_resp.status_code == 200
     assert dl_resp.content == file_content
     assert "attachment" in dl_resp.headers.get("content-disposition", "")
@@ -138,25 +121,20 @@ async def test_download_file(mock_storage_cls, authed_client):
 
 @pytest.mark.asyncio
 @patch("agentdrive.api.files.service.StorageService")
-async def test_download_file_blob_missing(mock_storage_cls, authed_client):
+async def test_download_file_blob_missing(mock_storage_cls, authed_client, db_session):
     client, tenant = authed_client
     mock_storage = MagicMock()
-    mock_storage.upload.return_value = "fake/path"
     mock_storage.download_stream.side_effect = FileNotFoundError("gone")
     mock_storage_cls.return_value = mock_storage
 
-    resp = await client.post(
-        "/v1/files",
-        files={"file": ("test.txt", b"content", "text/plain")},
-    )
-    file_id = resp.json()["id"]
+    record = await _seed_file(db_session, tenant)
 
-    dl_resp = await client.get(f"/v1/files/{file_id}/download")
+    dl_resp = await client.get(f"/v1/files/{record.id}/download")
     assert dl_resp.status_code == 502
 
 
 @pytest.mark.asyncio
 async def test_download_file_not_found(authed_client):
-    client, tenant = authed_client
+    client, _tenant = authed_client
     resp = await client.get(f"/v1/files/{uuid.uuid4()}/download")
     assert resp.status_code == 404

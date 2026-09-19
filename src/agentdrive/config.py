@@ -16,7 +16,6 @@ class Settings(BaseSettings):
     enrichment_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
     enrichment_model: str = "gemini-3.6-flash"
     environment: str = "development"
-    max_upload_bytes: int = 32 * 1024 * 1024  # 32MB
     workos_api_key: str = ""
     workos_client_id: str = ""
     auto_provision_tenants: bool = True

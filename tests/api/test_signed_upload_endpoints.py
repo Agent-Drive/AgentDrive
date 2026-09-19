@@ -73,6 +73,35 @@ async def test_upload_url_creates_uploading_file(mock_storage_cls, authed_client
 
 @pytest.mark.asyncio
 @patch("agentdrive.api.files.service.StorageService")
+async def test_upload_url_persists_internal_content_type(mock_storage_cls, authed_client, db_session):
+    client, tenant = authed_client
+    mock_storage = MagicMock()
+    mock_storage.generate_path.return_value = "tenants/abc/files/def/report.pdf"
+    mock_storage.generate_signed_upload_url.return_value = "https://storage.example/signed-url"
+    mock_storage_cls.return_value = mock_storage
+
+    response = await client.post(
+        "/v1/files/upload-url",
+        json={
+            "filename": "report.pdf",
+            "content_type": "application/pdf",
+            "file_size": 1_000_000,
+        },
+    )
+    assert response.status_code == 201
+
+    mock_storage.generate_signed_upload_url.assert_called_once()
+    assert mock_storage.generate_signed_upload_url.call_args.kwargs["content_type"] == "application/pdf"
+
+    result = await db_session.execute(
+        select(FileModel).where(FileModel.id == uuid.UUID(response.json()["file_id"]))
+    )
+    file_record = result.scalar_one()
+    assert file_record.content_type == "pdf"
+
+
+@pytest.mark.asyncio
+@patch("agentdrive.api.files.service.StorageService")
 async def test_upload_url_rejects_oversized(mock_storage_cls, authed_client):
     client, tenant = authed_client
     mock_storage_cls.return_value = MagicMock()
