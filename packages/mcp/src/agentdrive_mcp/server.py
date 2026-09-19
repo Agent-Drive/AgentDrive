@@ -9,6 +9,8 @@ from mcp.server import InitializationOptions, Server
 from mcp.server.stdio import stdio_server
 from mcp.types import ServerCapabilities, TextContent, Tool
 
+from agentdrive_mcp.upload import upload_via_signed_url
+
 AGENT_DRIVE_URL = os.environ.get("AGENT_DRIVE_URL", "https://api.agentdrive.so")
 
 
@@ -91,11 +93,8 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             file_path = Path(arguments["path"])
             if not file_path.exists():
                 return [TextContent(type="text", text=f"Error: File not found: {file_path}")]
-            with open(file_path, "rb") as f:
-                files = {"file": (file_path.name, f, "application/octet-stream")}
-                response = await client.post("/v1/files", files=files)
-            result = response.json()
-            return [TextContent(type="text", text=json.dumps(result, indent=2))]
+            result = await upload_via_signed_url(file_path, client)
+            return [TextContent(type="text", text=result)]
         elif name == "search":
             body = {"query": arguments["query"], "top_k": arguments.get("top_k", 5)}
             response = await client.post("/v1/search", json=body)

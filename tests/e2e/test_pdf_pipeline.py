@@ -8,6 +8,7 @@ Run: uv run pytest tests/e2e/ -v
 import asyncio
 from pathlib import Path
 
+import httpx
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import text
@@ -27,15 +28,37 @@ async def test_pdf_upload_enrichment_and_embedding(
     """Upload a PDF and verify the full pipeline: chunking, enrichment, and embedding."""
     assert PDF_PATH.exists(), f"Test PDF not found: {PDF_PATH}"
 
-    # Upload
-    with open(PDF_PATH, "rb") as f:
-        response = await async_client.post(
-            "/v1/files",
-            headers={"Authorization": f"Bearer {api_key}"},
-            files={"file": ("test_nexus_annual_report.pdf", f, "application/pdf")},
-        )
-    assert response.status_code == 202, f"Upload failed: {response.text}"
-    file_id = response.json()["id"]
+    file_size = PDF_PATH.stat().st_size
+    url_resp = await async_client.post(
+        "/v1/files/upload-url",
+        headers={"Authorization": f"Bearer {api_key}"},
+        json={
+            "filename": "test_nexus_annual_report.pdf",
+            "content_type": "application/pdf",
+            "file_size": file_size,
+        },
+    )
+    assert url_resp.status_code == 201, f"Upload URL failed: {url_resp.text}"
+    payload = url_resp.json()
+    file_id = payload["file_id"]
+
+    with httpx.Client() as storage_client:
+        with PDF_PATH.open("rb") as handle:
+            put_resp = storage_client.put(
+                payload["upload_url"],
+                content=handle,
+                headers={
+                    "Content-Type": "application/pdf",
+                    "Content-Length": str(file_size),
+                },
+            )
+    assert put_resp.is_success, f"Storage PUT failed: {put_resp.status_code} {put_resp.text}"
+
+    complete_resp = await async_client.post(
+        f"/v1/files/{file_id}/complete",
+        headers={"Authorization": f"Bearer {api_key}"},
+    )
+    assert complete_resp.status_code == 200, f"Complete failed: {complete_resp.text}"
 
     # Poll until ready or failed
     elapsed = 0

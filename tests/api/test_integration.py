@@ -28,10 +28,11 @@ async def authed_client(client, db_session):
 @patch("agentdrive.api.files.service.enqueue", lambda file_id: None)
 @patch("agentdrive.api.files.service.StorageService")
 async def test_upload_and_search(mock_storage_cls, mock_get_engine, authed_client):
-    # Mock GCS
     mock_storage = MagicMock()
-    mock_storage.upload.return_value = "test/path"
-    mock_storage.download.return_value = b"# Test Doc\n\n## Section A\n\nImportant content about authentication.\n\n## Section B\n\nDetails about authorization."
+    mock_storage.generate_path.return_value = "test/path"
+    mock_storage.generate_signed_upload_url.return_value = "https://storage.example/put"
+    mock_storage.blob_exists.return_value = True
+    mock_storage.get_blob_size.return_value = 100
     mock_storage_cls.return_value = mock_storage
 
     # Mock search engine
@@ -48,13 +49,18 @@ async def test_upload_and_search(mock_storage_cls, mock_get_engine, authed_clien
     ])
     mock_get_engine.return_value = mock_engine
 
-    # Upload file
-    upload_resp = await authed_client.post(
-        "/v1/files",
-        files={"file": ("test.md", b"# Test Doc\n\n## Section A\n\nImportant content about authentication.\n\n## Section B\n\nDetails about authorization.", "text/markdown")},
+    url_resp = await authed_client.post(
+        "/v1/files/upload-url",
+        json={
+            "filename": "test.md",
+            "content_type": "text/markdown",
+            "file_size": 100,
+        },
     )
-    assert upload_resp.status_code == 202
-    file_id = upload_resp.json()["id"]
+    assert url_resp.status_code == 201
+    file_id = url_resp.json()["file_id"]
+    complete_resp = await authed_client.post(f"/v1/files/{file_id}/complete")
+    assert complete_resp.status_code == 200
 
     # Check status (ingest runs in background — with mock, it may or may not complete)
     import asyncio
@@ -71,6 +77,5 @@ async def test_upload_and_search(mock_storage_cls, mock_get_engine, authed_clien
     assert "search_time_ms" in data
     assert len(data["results"]) >= 1
 
-    # Verify the full pipeline was exercised
-    mock_storage.upload.assert_called_once()
+    mock_storage.generate_signed_upload_url.assert_called_once()
     mock_engine.search.assert_called_once()

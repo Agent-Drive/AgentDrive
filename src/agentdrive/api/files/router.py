@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agentdrive.engine.data.session import get_session
@@ -16,15 +16,6 @@ from agentdrive.api.files.schemas import (
 )
 
 router = APIRouter(prefix="/v1/files", tags=["files"])
-
-
-@router.post("", status_code=202, response_model=FileUploadResponse)
-async def upload_file(
-    file: UploadFile = File(...),
-    tenant: Tenant = Depends(get_current_tenant),
-    session: AsyncSession = Depends(get_session),
-):
-    return await service.upload_file(session, tenant, file)
 
 
 @router.post("/upload-url", status_code=201, response_model=UploadUrlResponse)
