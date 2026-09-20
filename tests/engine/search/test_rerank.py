@@ -44,3 +44,35 @@ def test_rerank_respects_top_k(mock_get_client):
 def test_rerank_empty_candidates():
     result = rerank_results("query", [], top_k=5)
     assert result == []
+
+
+@patch("agentdrive.engine.search.rerank._get_client")
+def test_rerank_drops_hits_below_floor(mock_get_client):
+    mock_client = MagicMock()
+    mock_client.rerank.return_value = MagicMock(
+        results=[
+            MagicMock(index=0, relevance_score=0.95),
+            MagicMock(index=1, relevance_score=0.20),
+        ]
+    )
+    mock_get_client.return_value = mock_client
+    candidates = [make_result("relevant", 0.5), make_result("noise", 0.4)]
+    reranked = rerank_results("query", candidates, top_k=2)
+    assert len(reranked) == 1
+    assert reranked[0].content == "relevant"
+    assert reranked[0].score == 0.95
+
+
+@patch("agentdrive.engine.search.rerank._get_client")
+def test_rerank_returns_empty_when_all_below_floor(mock_get_client):
+    mock_client = MagicMock()
+    mock_client.rerank.return_value = MagicMock(
+        results=[
+            MagicMock(index=0, relevance_score=0.10),
+            MagicMock(index=1, relevance_score=0.10),
+        ]
+    )
+    mock_get_client.return_value = mock_client
+    candidates = [make_result("a", 0.5), make_result("b", 0.4)]
+    reranked = rerank_results("query", candidates, top_k=2)
+    assert reranked == []
