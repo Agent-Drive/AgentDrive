@@ -5,7 +5,7 @@ Manual smoke (Claude Code or Cursor):
 2. Add MCP URL http://localhost:8080/mcp
 3. Complete WorkOS login once
 4. start_upload a small file, PUT to the signed URL, complete_upload
-5. Confirm pending → processing. uvx stdio should still work in parallel.
+5. Confirm pending → processing.
 """
 
 import base64

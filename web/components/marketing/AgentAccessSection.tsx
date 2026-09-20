@@ -4,7 +4,6 @@ import { ApiSnippet } from "./ApiSnippet";
 const SURFACES = [
   { key: "MCP", val: "Native tool for Claude, GPT, Cursor" },
   { key: "API", val: "REST endpoint, structured JSON" },
-  { key: "CLI", val: "agentdrive pull --brand nike --limit 50" },
 ] as const;
 
 export function AgentAccessSection() {
@@ -22,7 +21,7 @@ export function AgentAccessSection() {
         </Link>
       </div>
       <p className="font-geist mb-5 max-w-lg text-[0.9rem] leading-[1.65] text-[rgba(240,244,248,0.72)]">
-        Three surfaces. One data layer. Agents retrieve real ad context at generation time — so
+        Two surfaces. One data layer. Agents retrieve real ad context at generation time — so
         output is accurate, grounded, and on-brand.
       </p>
 

@@ -30,7 +30,7 @@ export function IntroSection() {
           <div className="audience-label">For AI Agents</div>
           <ul className="audience-list">
             <li>Structured corpus for RAG</li>
-            <li>MCP · API · CLI access</li>
+            <li>MCP · API access</li>
             <li>Clean schema, zero hallucination</li>
           </ul>
         </div>

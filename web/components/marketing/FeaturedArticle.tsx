@@ -37,9 +37,8 @@ export function FeaturedArticle() {
       <h2 id="the-generalization-trap">The generalization trap</h2>
 
       <p>
-        Three surfaces. One data layer. Whether you&apos;re accessing via MCP for Claude, hitting
-        our REST API, or pulling via CLI, the goal is the same: inject high-fidelity context into
-        your workflows.
+        Two surfaces. One data layer. Whether you&apos;re accessing via MCP for Claude or hitting
+        our REST API, the goal is the same: inject high-fidelity context into your workflows.
       </p>
 
       <div className="relative-block">

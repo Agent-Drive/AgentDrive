@@ -38,12 +38,10 @@ src/agentdrive/
 │   ├── dependencies.py
 │   ├── files/           # router, service, schemas
 │   ├── search/
-│   ├── keys/
-│   └── auth/
-├── cli/                 # CLI door
+│   ├── auth/
+│   └── mcp/             # hosted MCP (HTTP + WorkOS OAuth)
 └── engine/              # data, pipeline, search
 
-packages/mcp/            # standalone MCP client (the only MCP)
 web/                     # Next.js marketing (/) + dashboard (/dashboard)
 ```
 
