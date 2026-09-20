@@ -25,30 +25,6 @@ export type FileListResponse = {
   total: number;
 };
 
-export type ApiKey = {
-  id: string;
-  key_prefix: string;
-  name: string | null;
-  created_at: string;
-  expires_at: string | null;
-  revoked_at: string | null;
-  last_used: string | null;
-};
-
-export type ApiKeyListResponse = {
-  api_keys: ApiKey[];
-  total: number;
-};
-
-export type ApiKeyCreateResponse = {
-  id: string;
-  key: string;
-  key_prefix: string;
-  name: string | null;
-  created_at: string;
-  expires_at: string | null;
-};
-
 export type SearchHit = {
   chunk_id: string;
   content: string;

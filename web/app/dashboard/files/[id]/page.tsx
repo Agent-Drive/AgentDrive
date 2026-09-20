@@ -20,7 +20,7 @@ export default async function FileDetailPage({
         href="/dashboard"
         className="mb-3 font-mono text-[0.6rem] text-[var(--ink-dim)] hover:text-[var(--accent)]"
       >
-        ← Overview
+        ← Files
       </Link>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="font-geist text-lg font-medium tracking-tight text-[var(--ink)]">
