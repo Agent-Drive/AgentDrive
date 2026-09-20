@@ -9,7 +9,6 @@ from agentdrive.config import settings
 from agentdrive.engine.data.session import async_session_factory
 from agentdrive.api.files.router import router as files_router
 from agentdrive.api.search.router import router as search_router
-from agentdrive.api.keys.router import router as keys_router
 from agentdrive.api.auth.router import router as auth_router
 from agentdrive.api.mcp import create_mcp_server
 from agentdrive.engine.pipeline.queue import reap_stuck_files, start_workers, stop_workers
@@ -48,7 +47,6 @@ def create_app() -> FastAPI:
     )
     app.state.mcp = mcp
     app.state.mcp_oauth = oauth_provider
-    app.include_router(keys_router)
     app.include_router(auth_router)
     app.include_router(files_router)
     app.include_router(search_router)

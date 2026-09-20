@@ -38,7 +38,6 @@ src/agentdrive/
 │   ├── dependencies.py
 │   ├── files/           # router, service, schemas
 │   ├── search/
-│   ├── keys/
 │   ├── auth/
 │   └── mcp/             # hosted MCP (HTTP + WorkOS OAuth)
 └── engine/              # data, pipeline, search
