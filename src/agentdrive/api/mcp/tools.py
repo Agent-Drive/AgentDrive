@@ -4,11 +4,10 @@ import uuid
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from agentdrive.api.files import service as files_service
-from agentdrive.api.files.schemas import UploadUrlRequest
-from agentdrive.api.search import service as search_service
-from agentdrive.api.search.schemas import SearchRequest
-from agentdrive.engine.data.models.tenant import Tenant
+from agentdrive.api.files.schemas import FileDetailResponse, FileListResponse, FileUploadResponse
+from agentdrive.core import files as core_files
+from agentdrive.core import search as core_search
+from agentdrive.core.data.models.tenant import Tenant
 
 
 def _dump(payload) -> str:
@@ -25,22 +24,25 @@ def _parse_file_id(file_id: str) -> uuid.UUID:
 
 
 async def search(session: AsyncSession, tenant: Tenant, query: str, top_k: int = 5) -> str:
-    result = await search_service.search(session, tenant, SearchRequest(query=query, top_k=top_k))
+    result = await core_search.search(session, tenant.id, query, top_k=top_k)
     return _dump(result)
 
 
 async def list_files(session: AsyncSession, tenant: Tenant) -> str:
-    result = await files_service.list_files(session, tenant)
-    return _dump(result)
+    files = await core_files.list_files(session, tenant)
+    return _dump(FileListResponse(
+        files=[FileDetailResponse.model_validate(f) for f in files],
+        total=len(files),
+    ))
 
 
 async def get_file_status(session: AsyncSession, tenant: Tenant, file_id: str) -> str:
-    result = await files_service.get_file(session, tenant, _parse_file_id(file_id))
-    return _dump(result)
+    file_record = await core_files.get_file(session, tenant, _parse_file_id(file_id))
+    return _dump(FileDetailResponse.model_validate(file_record))
 
 
 async def delete_file(session: AsyncSession, tenant: Tenant, file_id: str) -> str:
-    await files_service.delete_file(session, tenant, _parse_file_id(file_id))
+    await core_files.delete_file(session, tenant, _parse_file_id(file_id))
     return "File deleted successfully."
 
 
@@ -51,16 +53,14 @@ async def start_upload(
     file_size: int,
     mime_type: str = "application/octet-stream",
 ) -> str:
-    result = await files_service.create_upload_url(
-        session,
-        tenant,
-        UploadUrlRequest(filename=filename, file_size=file_size, content_type=mime_type),
+    slot = await core_files.create_upload_url(
+        session, tenant, filename, file_size, mime_type,
     )
     return json.dumps(
         {
-            "file_id": str(result.file_id),
-            "upload_url": result.upload_url,
-            "expires_at": result.expires_at.isoformat(),
+            "file_id": str(slot.file.id),
+            "upload_url": slot.upload_url,
+            "expires_at": slot.expires_at.isoformat(),
             "instructions": (
                 "PUT the file bytes to upload_url with the same Content-Type as mime_type, "
                 "then call complete_upload with file_id."
@@ -71,10 +71,10 @@ async def start_upload(
 
 
 async def complete_upload(session: AsyncSession, tenant: Tenant, file_id: str) -> str:
-    result = await files_service.complete_upload(session, tenant, _parse_file_id(file_id))
-    return _dump(result)
+    file_record = await core_files.complete_upload(session, tenant, _parse_file_id(file_id))
+    return _dump(FileUploadResponse.model_validate(file_record))
 
 
 async def download_file(session: AsyncSession, tenant: Tenant, file_id: str) -> str:
-    result = await files_service.get_download_url(session, tenant, _parse_file_id(file_id))
-    return json.dumps(result, indent=2)
+    slot = await core_files.get_download_url(session, tenant, _parse_file_id(file_id))
+    return json.dumps(slot.as_dict(), indent=2)

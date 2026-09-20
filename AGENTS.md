@@ -19,7 +19,7 @@ cd web && pnpm dev
 uv run pytest tests/ -v
 
 # Run a single test
-uv run pytest tests/engine/pipeline/enrichment/test_client.py::test_generate_context -v
+uv run pytest tests/core/pipeline/enrichment/test_client.py::test_generate_context -v
 
 # Run migrations
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5434/agentdrive uv run alembic upgrade head
@@ -40,7 +40,7 @@ src/agentdrive/
 │   ├── search/
 │   ├── auth/
 │   └── mcp/             # hosted MCP (HTTP + WorkOS OAuth)
-└── engine/              # data, pipeline, search
+└── core/                # data, pipeline, search
 
 web/                     # Next.js marketing (/) + dashboard (/dashboard)
 ```

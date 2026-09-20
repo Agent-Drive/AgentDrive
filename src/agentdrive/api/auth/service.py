@@ -7,8 +7,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agentdrive.config import settings
-from agentdrive.engine.data.models.api_key import ApiKey
-from agentdrive.engine.data.models.tenant import Tenant
+from agentdrive.core.data.models.api_key import ApiKey
+from agentdrive.core.data.models.tenant import Tenant
 from agentdrive.api.auth.schemas import ExchangeRequest, ExchangeResponse
 
 KEY_PREFIX = "sk-ad-"

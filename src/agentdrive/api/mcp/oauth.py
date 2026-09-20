@@ -20,7 +20,7 @@ from agentdrive.api.auth import service as auth_service
 from agentdrive.api.auth.service import generate_api_key
 from agentdrive.api.dependencies import _tenant_from_api_key
 from agentdrive.api.mcp.deps import mcp_session
-from agentdrive.engine.data.models.api_key import ApiKey
+from agentdrive.core.data.models.api_key import ApiKey
 
 _AUTH_CODE_TTL_SECONDS = 300
 _ACCESS_TOKEN_TTL_SECONDS = 365 * 24 * 60 * 60

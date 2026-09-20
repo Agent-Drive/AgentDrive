@@ -6,12 +6,12 @@ from fastapi import FastAPI, Request
 from starlette.middleware.authentication import AuthenticationMiddleware
 
 from agentdrive.config import settings
-from agentdrive.engine.data.session import async_session_factory
+from agentdrive.core.data.session import async_session_factory
 from agentdrive.api.files.router import router as files_router
 from agentdrive.api.search.router import router as search_router
 from agentdrive.api.auth.router import router as auth_router
 from agentdrive.api.mcp import create_mcp_server
-from agentdrive.engine.pipeline.queue import reap_stuck_files, start_workers, stop_workers
+from agentdrive.core.pipeline.queue import reap_stuck_files, start_workers, stop_workers
 
 
 def _load_gcp_credentials() -> None:
