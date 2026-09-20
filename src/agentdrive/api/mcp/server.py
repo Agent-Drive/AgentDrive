@@ -6,10 +6,12 @@ from mcp.server.transport_security import TransportSecuritySettings
 from pydantic import AnyHttpUrl
 
 from agentdrive.api.dependencies import _tenant_from_api_key
+from agentdrive.api.errors import mcp_message
 from agentdrive.api.mcp import tools as mcp_tools
 from agentdrive.api.mcp.deps import mcp_session
 from agentdrive.api.mcp.oauth import WorkOSOAuthProvider
 from agentdrive.config import settings
+from agentdrive.core.errors import CoreError
 
 
 def _public_base_url() -> str:
@@ -33,6 +35,8 @@ async def _run_tool(fn, *args, **kwargs) -> str:
             return await fn(session, tenant, *args, **kwargs)
     except HTTPException as exc:
         return f"Error ({exc.status_code}): {exc.detail}"
+    except CoreError as exc:
+        return mcp_message(exc)
 
 
 def create_mcp_server() -> tuple[FastMCP, WorkOSOAuthProvider]:

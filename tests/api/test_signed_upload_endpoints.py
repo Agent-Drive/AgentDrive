@@ -5,10 +5,10 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import select
 
-from agentdrive.engine.data.models.api_key import ApiKey
-from agentdrive.engine.data.models.file import File as FileModel
-from agentdrive.engine.data.models.tenant import Tenant
-from agentdrive.engine.data.models.types import FileStatus
+from agentdrive.core.data.models.api_key import ApiKey
+from agentdrive.core.data.models.file import File as FileModel
+from agentdrive.core.data.models.tenant import Tenant
+from agentdrive.core.data.models.types import FileStatus
 from agentdrive.api.auth.service import hash_api_key, parse_key_prefix
 
 TEST_API_KEY = "sk-ad-signeduploadtestkey1234567890ab"
@@ -17,7 +17,7 @@ TEST_API_KEY = "sk-ad-signeduploadtestkey1234567890ab"
 @pytest.fixture(autouse=True)
 def mock_ingest(monkeypatch):
     """Prevent enqueue from starting real ingestion during tests."""
-    monkeypatch.setattr("agentdrive.api.files.service.enqueue", lambda file_id: None)
+    monkeypatch.setattr("agentdrive.core.files.enqueue", lambda file_id: None)
 
 
 @pytest_asyncio.fixture
@@ -40,7 +40,7 @@ async def authed_client(client, db_session):
 
 
 @pytest.mark.asyncio
-@patch("agentdrive.api.files.service.StorageService")
+@patch("agentdrive.core.files.StorageService")
 async def test_upload_url_creates_uploading_file(mock_storage_cls, authed_client, db_session):
     client, tenant = authed_client
     mock_storage = MagicMock()
@@ -72,7 +72,7 @@ async def test_upload_url_creates_uploading_file(mock_storage_cls, authed_client
 
 
 @pytest.mark.asyncio
-@patch("agentdrive.api.files.service.StorageService")
+@patch("agentdrive.core.files.StorageService")
 async def test_upload_url_persists_internal_content_type(mock_storage_cls, authed_client, db_session):
     client, tenant = authed_client
     mock_storage = MagicMock()
@@ -101,7 +101,7 @@ async def test_upload_url_persists_internal_content_type(mock_storage_cls, authe
 
 
 @pytest.mark.asyncio
-@patch("agentdrive.api.files.service.StorageService")
+@patch("agentdrive.core.files.StorageService")
 async def test_upload_url_rejects_oversized(mock_storage_cls, authed_client):
     client, tenant = authed_client
     mock_storage_cls.return_value = MagicMock()
@@ -118,8 +118,8 @@ async def test_upload_url_rejects_oversized(mock_storage_cls, authed_client):
 
 
 @pytest.mark.asyncio
-@patch("agentdrive.api.files.service.enqueue")
-@patch("agentdrive.api.files.service.StorageService")
+@patch("agentdrive.core.files.enqueue")
+@patch("agentdrive.core.files.StorageService")
 async def test_complete_upload_enqueues(mock_storage_cls, mock_enqueue, authed_client, db_session):
     client, tenant = authed_client
 
@@ -152,7 +152,7 @@ async def test_complete_upload_enqueues(mock_storage_cls, mock_enqueue, authed_c
 
 
 @pytest.mark.asyncio
-@patch("agentdrive.api.files.service.StorageService")
+@patch("agentdrive.core.files.StorageService")
 async def test_complete_404_for_non_uploading(mock_storage_cls, authed_client):
     client, tenant = authed_client
     mock_storage_cls.return_value = MagicMock()

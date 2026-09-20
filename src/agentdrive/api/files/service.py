@@ -1,16 +1,10 @@
 import uuid
-from datetime import datetime, timedelta, timezone
-
-from fastapi import HTTPException
-from fastapi.responses import StreamingResponse
 from urllib.parse import quote
-from sqlalchemy import select
+
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from agentdrive.config import settings
-from agentdrive.engine.data.models.file import File as FileModel
-from agentdrive.engine.data.models.tenant import Tenant
-from agentdrive.engine.data.models.types import FileStatus
+from agentdrive.api.errors import raise_http
 from agentdrive.api.files.schemas import (
     FileDetailResponse,
     FileListResponse,
@@ -18,152 +12,85 @@ from agentdrive.api.files.schemas import (
     UploadUrlRequest,
     UploadUrlResponse,
 )
-from agentdrive.engine.pipeline.file_type import detect_content_type
-from agentdrive.engine.pipeline.queue import enqueue
-from agentdrive.engine.pipeline.storage import StorageService
+from agentdrive.core import files as core_files
+from agentdrive.core.data.models.tenant import Tenant
+from agentdrive.core.errors import CoreError
 
 
 async def create_upload_url(
     session: AsyncSession, tenant: Tenant, body: UploadUrlRequest
 ) -> UploadUrlResponse:
-    if body.file_size > settings.max_signed_upload_bytes:
-        raise HTTPException(
-            status_code=413,
-            detail=f"File exceeds {settings.max_signed_upload_bytes} byte limit",
+    try:
+        slot = await core_files.create_upload_url(
+            session, tenant, body.filename, body.file_size, body.content_type,
         )
-    file_id = uuid.uuid4()
-    storage = StorageService()
-    gcs_path = storage.generate_path(tenant.id, file_id, body.filename)
-    upload_url = storage.generate_signed_upload_url(
-        tenant.id, file_id, body.filename,
-        content_type=body.content_type,
-        expiry_hours=settings.signed_url_expiry_hours,
-    )
-    file_record = FileModel(
-        id=file_id, tenant_id=tenant.id,
-        filename=body.filename,
-        content_type=detect_content_type(body.filename, body.content_type),
-        gcs_path=gcs_path, file_size=body.file_size,
-        status=FileStatus.UPLOADING,
-    )
-    session.add(file_record)
-    await session.commit()
-    await session.refresh(file_record)
-    expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.signed_url_expiry_hours)
+    except CoreError as exc:
+        raise_http(exc)
     return UploadUrlResponse(
-        file_id=file_record.id,
-        upload_url=upload_url,
-        expires_at=expires_at,
+        file_id=slot.file.id,
+        upload_url=slot.upload_url,
+        expires_at=slot.expires_at,
     )
 
 
 async def complete_upload(
     session: AsyncSession, tenant: Tenant, file_id: uuid.UUID
 ) -> FileUploadResponse:
-    result = await session.execute(
-        select(FileModel).where(
-            FileModel.id == file_id,
-            FileModel.tenant_id == tenant.id,
-            FileModel.status == FileStatus.UPLOADING,
-        )
-    )
-    file_record = result.scalar_one_or_none()
-    if not file_record:
-        raise HTTPException(status_code=404, detail="File not found or not in uploading state")
-    storage = StorageService()
-    if not storage.blob_exists(file_record.gcs_path):
-        raise HTTPException(status_code=400, detail="Upload not found in storage")
-    actual_size = storage.get_blob_size(file_record.gcs_path)
-    file_record.file_size = actual_size
-    file_record.status = FileStatus.PENDING
-    await session.commit()
-    await session.refresh(file_record)
-    enqueue(file_record.id)
+    try:
+        file_record = await core_files.complete_upload(session, tenant, file_id)
+    except CoreError as exc:
+        raise_http(exc)
     return FileUploadResponse.model_validate(file_record)
 
 
 async def get_file(session: AsyncSession, tenant: Tenant, file_id: uuid.UUID) -> FileDetailResponse:
-    result = await session.execute(
-        select(FileModel)
-        .where(FileModel.id == file_id, FileModel.tenant_id == tenant.id)
-    )
-    file_record = result.scalar_one_or_none()
-    if not file_record:
-        raise HTTPException(status_code=404, detail="File not found")
+    try:
+        file_record = await core_files.get_file(session, tenant, file_id)
+    except CoreError as exc:
+        raise_http(exc)
     return FileDetailResponse.model_validate(file_record)
 
 
 async def get_download_url(session: AsyncSession, tenant: Tenant, file_id: uuid.UUID) -> dict:
-    result = await session.execute(
-        select(FileModel).where(FileModel.id == file_id, FileModel.tenant_id == tenant.id)
-    )
-    file_record = result.scalar_one_or_none()
-    if not file_record:
-        raise HTTPException(status_code=404, detail="File not found")
-    storage = StorageService()
-    if not storage.blob_exists(file_record.gcs_path):
-        raise HTTPException(status_code=502, detail="File blob not found in storage")
-    download_url = storage.generate_signed_download_url(
-        file_record.gcs_path,
-        file_record.filename,
-        expiry_hours=settings.signed_url_expiry_hours,
-    )
-    return {
-        "file_id": str(file_record.id),
-        "filename": file_record.filename,
-        "download_url": download_url,
-        "expires_in_hours": settings.signed_url_expiry_hours,
-    }
+    try:
+        slot = await core_files.get_download_url(session, tenant, file_id)
+    except CoreError as exc:
+        raise_http(exc)
+    return slot.as_dict()
 
 
 async def download_file(session: AsyncSession, tenant: Tenant, file_id: uuid.UUID) -> StreamingResponse:
-    result = await session.execute(
-        select(FileModel).where(FileModel.id == file_id, FileModel.tenant_id == tenant.id)
-    )
-    file_record = result.scalar_one_or_none()
-    if not file_record:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    storage = StorageService()
     try:
-        stream = storage.download_stream(file_record.gcs_path)
-    except FileNotFoundError:
-        raise HTTPException(status_code=502, detail="File blob not found in storage")
-
-    safe_filename = file_record.filename.replace('"', '_')
+        download = await core_files.open_download(session, tenant, file_id)
+    except CoreError as exc:
+        raise_http(exc)
+    safe_filename = download.filename.replace('"', '_')
     headers = {
-        "Content-Disposition": f"attachment; filename=\"{safe_filename}\"; filename*=UTF-8''{quote(file_record.filename)}",
+        "Content-Disposition": (
+            f'attachment; filename="{safe_filename}"; '
+            f"filename*=UTF-8''{quote(download.filename)}"
+        ),
     }
-    if file_record.file_size:
-        headers["Content-Length"] = str(file_record.file_size)
-
+    if download.file_size:
+        headers["Content-Length"] = str(download.file_size)
     return StreamingResponse(
-        stream,
-        media_type=file_record.content_type,
+        download.stream,
+        media_type=download.content_type,
         headers=headers,
     )
 
 
 async def list_files(session: AsyncSession, tenant: Tenant) -> FileListResponse:
-    query = select(FileModel).where(FileModel.tenant_id == tenant.id)
-    query = query.order_by(FileModel.created_at.desc())
-    result = await session.execute(query)
-    files = result.scalars().all()
+    try:
+        files = await core_files.list_files(session, tenant)
+    except CoreError as exc:
+        raise_http(exc)
     responses = [FileDetailResponse.model_validate(f) for f in files]
-    return FileListResponse(
-        files=responses,
-        total=len(files),
-    )
+    return FileListResponse(files=responses, total=len(files))
 
 
 async def delete_file(session: AsyncSession, tenant: Tenant, file_id: uuid.UUID) -> None:
-    result = await session.execute(
-        select(FileModel).where(FileModel.id == file_id, FileModel.tenant_id == tenant.id)
-    )
-    file_record = result.scalar_one_or_none()
-    if not file_record:
-        raise HTTPException(status_code=404, detail="File not found")
-    storage = StorageService()
-    storage.delete(file_record.gcs_path)
-    await session.delete(file_record)
-    await session.commit()
+    try:
+        await core_files.delete_file(session, tenant, file_id)
+    except CoreError as exc:
+        raise_http(exc)

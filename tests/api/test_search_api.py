@@ -1,8 +1,8 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 import pytest_asyncio
-from agentdrive.engine.data.models.api_key import ApiKey
-from agentdrive.engine.data.models.tenant import Tenant
+from agentdrive.core.data.models.api_key import ApiKey
+from agentdrive.core.data.models.tenant import Tenant
 from agentdrive.api.auth.service import hash_api_key, parse_key_prefix
 
 TEST_API_KEY = "sk-ad-testpre1searchkeyforunittesting"
@@ -22,7 +22,7 @@ async def authed_client(client, db_session):
 
 
 @pytest.mark.asyncio
-@patch("agentdrive.api.search.service._get_engine")
+@patch("agentdrive.core.search._get_engine")
 async def test_search_endpoint(mock_get_engine, authed_client):
     mock_engine = MagicMock()
     mock_engine.search = AsyncMock(return_value=[

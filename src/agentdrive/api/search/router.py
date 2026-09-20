@@ -3,9 +3,9 @@ import uuid
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from agentdrive.engine.data.session import get_session
+from agentdrive.core.data.session import get_session
 from agentdrive.api.dependencies import get_current_tenant
-from agentdrive.engine.data.models.tenant import Tenant
+from agentdrive.core.data.models.tenant import Tenant
 from agentdrive.api.search import service
 from agentdrive.api.search.schemas import SearchRequest, SearchResponse
 

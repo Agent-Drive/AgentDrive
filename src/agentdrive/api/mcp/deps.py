@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from agentdrive.engine.data.session import async_session_factory as _default_factory
+from agentdrive.core.data.session import async_session_factory as _default_factory
 
 _session_factory: async_sessionmaker[AsyncSession] | None = None
 

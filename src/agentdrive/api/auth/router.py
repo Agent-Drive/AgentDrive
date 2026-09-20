@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agentdrive.config import settings
-from agentdrive.engine.data.session import get_session
+from agentdrive.core.data.session import get_session
 from agentdrive.api.auth import service
 from agentdrive.api.auth.schemas import ExchangeRequest, ExchangeResponse
 

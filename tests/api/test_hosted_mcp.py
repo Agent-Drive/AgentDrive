@@ -21,10 +21,10 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 from agentdrive.api.auth.service import hash_api_key, parse_key_prefix
-from agentdrive.engine.data.models.api_key import ApiKey
-from agentdrive.engine.data.models.file import File as FileModel
-from agentdrive.engine.data.models.tenant import Tenant
-from agentdrive.engine.data.models.types import FileStatus
+from agentdrive.core.data.models.api_key import ApiKey
+from agentdrive.core.data.models.file import File as FileModel
+from agentdrive.core.data.models.tenant import Tenant
+from agentdrive.core.data.models.types import FileStatus
 
 TEST_API_KEY = "sk-ad-hostedmcptestkey1234567890abcd"
 REDIRECT_URI = "http://127.0.0.1:3456/callback"
@@ -49,14 +49,14 @@ class _FakeAuth:
 
 @pytest.fixture(autouse=True)
 def mock_ingest(monkeypatch):
-    monkeypatch.setattr("agentdrive.api.files.service.enqueue", lambda file_id: None)
+    monkeypatch.setattr("agentdrive.core.files.enqueue", lambda file_id: None)
 
 
 @pytest_asyncio.fixture
 async def mcp_client(db_session_factory):
     from agentdrive.api.app import create_app
     from agentdrive.api.mcp.deps import set_session_factory
-    from agentdrive.engine.data.session import get_session
+    from agentdrive.core.data.session import get_session
 
     app = create_app()
 
@@ -197,7 +197,7 @@ async def test_oauth_issues_api_key(mock_workos, client):
 
 
 @pytest.mark.asyncio
-@patch("agentdrive.api.search.service._get_engine")
+@patch("agentdrive.core.search._get_engine")
 async def test_search_and_list_tools(mock_get_engine, db_session, seeded_tenant):
     from agentdrive.api.mcp import tools as mcp_tools
 
@@ -226,7 +226,7 @@ async def test_search_and_list_tools(mock_get_engine, db_session, seeded_tenant)
 
 
 @pytest.mark.asyncio
-@patch("agentdrive.api.files.service.StorageService")
+@patch("agentdrive.core.files.StorageService")
 async def test_start_and_complete_upload(mock_storage_cls, db_session, seeded_tenant):
     from agentdrive.api.mcp import tools as mcp_tools
 
@@ -256,7 +256,7 @@ async def test_start_and_complete_upload(mock_storage_cls, db_session, seeded_te
 
 
 @pytest.mark.asyncio
-@patch("agentdrive.api.files.service.StorageService")
+@patch("agentdrive.core.files.StorageService")
 async def test_download_returns_url(mock_storage_cls, db_session, seeded_tenant):
     from agentdrive.api.mcp import tools as mcp_tools
 
@@ -286,7 +286,7 @@ async def test_download_returns_url(mock_storage_cls, db_session, seeded_tenant)
 
 
 @pytest.mark.asyncio
-@patch("agentdrive.api.files.service.StorageService")
+@patch("agentdrive.core.files.StorageService")
 async def test_delete_and_status_tools(mock_storage_cls, db_session, seeded_tenant):
     from agentdrive.api.mcp import tools as mcp_tools
 
@@ -311,8 +311,8 @@ async def test_delete_and_status_tools(mock_storage_cls, db_session, seeded_tena
 
 
 @pytest.mark.asyncio
-@patch("agentdrive.api.files.service.StorageService")
-@patch("agentdrive.api.search.service._get_engine")
+@patch("agentdrive.core.files.StorageService")
+@patch("agentdrive.core.search._get_engine")
 @patch("agentdrive.api.mcp.oauth.auth_service.workos_client")
 async def test_oauth_token_drives_hosted_tools(
     mock_workos, mock_get_engine, mock_storage_cls, client, db_session

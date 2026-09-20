@@ -4,8 +4,8 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from agentdrive.engine.data.models.api_key import ApiKey
-from agentdrive.engine.data.models.tenant import Tenant
+from agentdrive.core.data.models.api_key import ApiKey
+from agentdrive.core.data.models.tenant import Tenant
 from agentdrive.api.auth.service import generate_api_key
 
 
