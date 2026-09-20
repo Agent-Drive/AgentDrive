@@ -53,6 +53,17 @@ def test_download_file(storage):
     )
 
 
+def test_generate_signed_download_url(storage):
+    svc, mock_client = storage
+    mock_client.generate_presigned_url.return_value = "https://storage.example/get"
+    url = svc.generate_signed_download_url("tenants/abc/files/def/report.pdf", "report.pdf")
+    assert url == "https://storage.example/get"
+    mock_client.generate_presigned_url.assert_called_once()
+    kwargs = mock_client.generate_presigned_url.call_args
+    assert kwargs[0][0] == "get_object"
+    assert kwargs[1]["Params"]["Key"] == "tenants/abc/files/def/report.pdf"
+
+
 def test_delete_file(storage):
     svc, mock_client = storage
     svc.delete("tenants/abc/files/def/report.pdf")

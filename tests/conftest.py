@@ -163,6 +163,10 @@ async def client(db_engine, db_session_factory) -> AsyncGenerator[AsyncClient, N
 
     app.dependency_overrides[get_session] = override_session
 
+    from agentdrive.api.mcp.deps import set_session_factory
+
+    set_session_factory(db_session_factory)
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as c:
         yield c
+    set_session_factory(None)

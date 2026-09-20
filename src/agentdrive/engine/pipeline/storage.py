@@ -113,6 +113,20 @@ class StorageService:
             ExpiresIn=expiry_hours * 3600,
         )
 
+    def generate_signed_download_url(
+        self, object_key: str, filename: str, expiry_hours: int = 1,
+    ) -> str:
+        safe_filename = filename.replace('"', "_")
+        return self._client.generate_presigned_url(
+            "get_object",
+            Params={
+                "Bucket": self._bucket,
+                "Key": object_key,
+                "ResponseContentDisposition": f'attachment; filename="{safe_filename}"',
+            },
+            ExpiresIn=expiry_hours * 3600,
+        )
+
     def blob_exists(self, object_key: str) -> bool:
         try:
             self._client.head_object(Bucket=self._bucket, Key=object_key)

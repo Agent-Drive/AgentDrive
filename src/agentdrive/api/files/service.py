@@ -93,6 +93,29 @@ async def get_file(session: AsyncSession, tenant: Tenant, file_id: uuid.UUID) ->
     return FileDetailResponse.model_validate(file_record)
 
 
+async def get_download_url(session: AsyncSession, tenant: Tenant, file_id: uuid.UUID) -> dict:
+    result = await session.execute(
+        select(FileModel).where(FileModel.id == file_id, FileModel.tenant_id == tenant.id)
+    )
+    file_record = result.scalar_one_or_none()
+    if not file_record:
+        raise HTTPException(status_code=404, detail="File not found")
+    storage = StorageService()
+    if not storage.blob_exists(file_record.gcs_path):
+        raise HTTPException(status_code=502, detail="File blob not found in storage")
+    download_url = storage.generate_signed_download_url(
+        file_record.gcs_path,
+        file_record.filename,
+        expiry_hours=settings.signed_url_expiry_hours,
+    )
+    return {
+        "file_id": str(file_record.id),
+        "filename": file_record.filename,
+        "download_url": download_url,
+        "expires_in_hours": settings.signed_url_expiry_hours,
+    }
+
+
 async def download_file(session: AsyncSession, tenant: Tenant, file_id: uuid.UUID) -> StreamingResponse:
     result = await session.execute(
         select(FileModel).where(FileModel.id == file_id, FileModel.tenant_id == tenant.id)
