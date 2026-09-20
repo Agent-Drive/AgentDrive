@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getFile } from "@/lib/dashboard/api";
+import { getFile, getFileDownloadUrl } from "@/lib/dashboard/api";
 import { formatBytes, formatWhen } from "@/lib/dashboard/format";
 import { OpsStatusBadge } from "@/components/dashboard/ops/OpsStatusBadge";
 
@@ -11,6 +11,9 @@ export default async function FileDetailPage({
   const { id } = await params;
   const file = await getFile(id);
 
+  const download = await getFileDownloadUrl(id);
+  const downloadUrl = download?.download_url ?? null;
+
   return (
     <>
       <Link
@@ -19,9 +22,20 @@ export default async function FileDetailPage({
       >
         ← Overview
       </Link>
-      <h1 className="font-geist text-lg font-medium tracking-tight text-[var(--ink)]">
-        {file.filename}
-      </h1>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <h1 className="font-geist text-lg font-medium tracking-tight text-[var(--ink)]">
+          {file.filename}
+        </h1>
+        {downloadUrl ? (
+          <a href={downloadUrl} className="ops-button">
+            Download file
+          </a>
+        ) : (
+          <p className="font-mono text-[0.65rem] text-[var(--ink-dim)]">
+            Download is unavailable.
+          </p>
+        )}
+      </div>
       <dl className="mt-5 grid max-w-xl grid-cols-2 gap-x-6 gap-y-3 text-[0.75rem]">
         <dt className="text-[var(--ink-dim)]">Status</dt>
         <dd>

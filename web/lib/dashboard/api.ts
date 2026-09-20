@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import type {
   ApiKeyCreateResponse,
   ApiKeyListResponse,
+  DownloadUrlResponse,
   DriveFile,
   FileListResponse,
   SearchResponse,
@@ -88,6 +89,28 @@ export function searchFiles(query: string, topK = 8) {
 
 export function getFile(fileId: string) {
   return apiFetch<DriveFile>(`/v1/files/${fileId}`);
+}
+
+export async function getFileDownloadUrl(fileId: string): Promise<DownloadUrlResponse | null> {
+  const { accessToken } = await withAuth({ ensureSignedIn: true });
+  if (!accessToken) {
+    redirect("/auth/sign-in");
+  }
+
+  const res = await fetch(`${API_URL}/v1/files/${fileId}/download-url`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: "no-store",
+  });
+
+  if (res.status === 401) {
+    await signOut({ returnTo: "/auth/sign-in" });
+  }
+
+  if (!res.ok) {
+    return null;
+  }
+
+  return res.json() as Promise<DownloadUrlResponse>;
 }
 
 export function listApiKeys() {

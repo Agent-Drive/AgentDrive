@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { DriveFile } from "@/lib/dashboard/types";
-import { formatFileLabel } from "@/lib/dashboard/format";
+import { formatFileLabel, formatWhen } from "@/lib/dashboard/format";
 import { OpsStatusBadge } from "./OpsStatusBadge";
 
 export function OpsFileTable({ files }: { files: DriveFile[] }) {
@@ -19,6 +19,7 @@ export function OpsFileTable({ files }: { files: DriveFile[] }) {
           <th>File Name</th>
           <th>Format</th>
           <th>Status</th>
+          <th>Updated</th>
         </tr>
       </thead>
       <tbody>
@@ -33,6 +34,7 @@ export function OpsFileTable({ files }: { files: DriveFile[] }) {
             <td>
               <OpsStatusBadge status={file.status} />
             </td>
+            <td>{formatWhen(file.updated_at)}</td>
           </tr>
         ))}
       </tbody>

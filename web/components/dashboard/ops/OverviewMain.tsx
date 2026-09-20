@@ -1,27 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { searchCorpusAction } from "@/lib/dashboard/actions";
 import type { DriveFile, SearchHit } from "@/lib/dashboard/types";
 import { SearchIcon } from "./OpsIcons";
 import { OpsFileTable } from "./OpsFileTable";
-
-function fileNameFor(hit: SearchHit, filesById: Map<string, string>) {
-  const fileId = typeof hit.provenance.file_id === "string" ? hit.provenance.file_id : "";
-  if (typeof hit.provenance.filename === "string" && hit.provenance.filename) {
-    return hit.provenance.filename;
-  }
-  if (fileId && filesById.has(fileId)) {
-    return filesById.get(fileId) as string;
-  }
-  return fileId || "Unknown file";
-}
-
-function snippetText(hit: SearchHit) {
-  const text = hit.content.trim();
-  return text.length > 280 ? `${text.slice(0, 280)}…` : text;
-}
+import { SearchHitList } from "./SearchHitList";
 
 export function OverviewMain({ files }: { files: DriveFile[] }) {
   const [query, setQuery] = useState("");
@@ -73,35 +57,18 @@ export function OverviewMain({ files }: { files: DriveFile[] }) {
 
       <div className="flex-grow overflow-auto rounded border border-[var(--border)] bg-[var(--surface)]">
         {!hasQuery ? (
-          <OpsFileTable files={files} />
+          <div>
+            <p className="px-3 pt-3 pb-1 font-mono text-[0.6rem] tracking-wide text-[var(--ink-dim)] uppercase">
+              Recent
+            </p>
+            <OpsFileTable files={files} />
+          </div>
         ) : hits === undefined ? (
           <p className="px-3 py-3 font-mono text-[0.65rem] text-[var(--ink-dim)]">Searching…</p>
         ) : hits === null ? (
           <OpsFileTable files={filtered} />
         ) : hits.length > 0 ? (
-          <div>
-            {hits.map((hit) => {
-              const fileId = typeof hit.provenance.file_id === "string" ? hit.provenance.file_id : "";
-              const name = fileNameFor(hit, filesById);
-              return (
-                <div key={hit.chunk_id} className="search-hit">
-                  <p className="font-geist text-[0.75rem] leading-relaxed text-[rgba(240,244,248,0.85)]">
-                    {snippetText(hit)}
-                  </p>
-                  {fileId ? (
-                    <Link
-                      href={`/dashboard/files/${fileId}`}
-                      className="mt-1.5 inline-block font-mono text-[0.6rem] text-[var(--accent)]"
-                    >
-                      {name}
-                    </Link>
-                  ) : (
-                    <p className="mt-1.5 font-mono text-[0.6rem] text-[var(--accent)]">{name}</p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          <SearchHitList hits={hits} filesById={filesById} />
         ) : (
           <p className="px-3 py-3 font-mono text-[0.65rem] text-[var(--ink-dim)]">No matching passages.</p>
         )}

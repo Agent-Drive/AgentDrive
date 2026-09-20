@@ -8,6 +8,7 @@ from agentdrive.api.dependencies import get_current_tenant
 from agentdrive.engine.data.models.tenant import Tenant
 from agentdrive.api.files import service
 from agentdrive.api.files.schemas import (
+    DownloadUrlResponse,
     FileDetailResponse,
     FileListResponse,
     FileUploadResponse,
@@ -43,6 +44,15 @@ async def get_file(
     session: AsyncSession = Depends(get_session),
 ):
     return await service.get_file(session, tenant, file_id)
+
+
+@router.get("/{file_id}/download-url", response_model=DownloadUrlResponse)
+async def get_download_url(
+    file_id: uuid.UUID,
+    tenant: Tenant = Depends(get_current_tenant),
+    session: AsyncSession = Depends(get_session),
+):
+    return await service.get_download_url(session, tenant, file_id)
 
 
 @router.get("/{file_id}/download")

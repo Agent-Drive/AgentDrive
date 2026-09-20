@@ -138,3 +138,45 @@ async def test_download_file_not_found(authed_client):
     client, _tenant = authed_client
     resp = await client.get(f"/v1/files/{uuid.uuid4()}/download")
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+@patch("agentdrive.api.files.service.StorageService")
+async def test_download_url(mock_storage_cls, authed_client, db_session):
+    client, tenant = authed_client
+    mock_storage = MagicMock()
+    mock_storage.blob_exists.return_value = True
+    mock_storage.generate_signed_download_url.return_value = "https://storage.example/signed"
+    mock_storage_cls.return_value = mock_storage
+
+    record = await _seed_file(db_session, tenant, filename="brief.docx")
+
+    resp = await client.get(f"/v1/files/{record.id}/download-url")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["file_id"] == str(record.id)
+    assert data["filename"] == "brief.docx"
+    assert data["download_url"] == "https://storage.example/signed"
+    assert data["expires_in_hours"] == 1
+    mock_storage.generate_signed_download_url.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch("agentdrive.api.files.service.StorageService")
+async def test_download_url_blob_missing(mock_storage_cls, authed_client, db_session):
+    client, tenant = authed_client
+    mock_storage = MagicMock()
+    mock_storage.blob_exists.return_value = False
+    mock_storage_cls.return_value = mock_storage
+
+    record = await _seed_file(db_session, tenant)
+
+    resp = await client.get(f"/v1/files/{record.id}/download-url")
+    assert resp.status_code == 502
+
+
+@pytest.mark.asyncio
+async def test_download_url_not_found(authed_client):
+    client, _tenant = authed_client
+    resp = await client.get(f"/v1/files/{uuid.uuid4()}/download-url")
+    assert resp.status_code == 404
