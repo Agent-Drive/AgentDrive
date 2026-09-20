@@ -11,7 +11,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.get("/config")
 async def auth_config():
-    """Public endpoint — returns client_id for CLI device flow."""
+    """Public endpoint — returns client_id for WorkOS device flow."""
     if not settings.workos_client_id:
         raise HTTPException(status_code=503, detail="WorkOS not configured")
     return {"client_id": settings.workos_client_id}
