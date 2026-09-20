@@ -23,4 +23,4 @@ def rerank_results(query: str, candidates: list[SearchResult], top_k: int = 5) -
         candidate = candidates[result.index]
         candidate.score = result.relevance_score
         reranked.append(candidate)
-    return reranked
+    return [c for c in reranked if c.score >= settings.search_min_relevance]

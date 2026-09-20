@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     docai_batch_timeout_seconds: int = 1800
     max_signed_upload_bytes: int = 5 * 1024 * 1024 * 1024  # 5GB
     signed_url_expiry_hours: int = 1
+    search_min_relevance: float = 0.3
 
     model_config = {
         "env_file": ".env",
