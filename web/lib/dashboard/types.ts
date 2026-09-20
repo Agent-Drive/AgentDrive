@@ -69,3 +69,10 @@ export type SearchResponse = {
   query_tokens: number;
   search_time_ms: number;
 };
+
+export type DownloadUrlResponse = {
+  file_id: string;
+  filename: string;
+  download_url: string;
+  expires_in_hours: number;
+};

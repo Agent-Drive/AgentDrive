@@ -43,3 +43,10 @@ class FileDetailResponse(BaseModel):
 class FileListResponse(BaseModel):
     files: list[FileDetailResponse]
     total: int
+
+
+class DownloadUrlResponse(BaseModel):
+    file_id: uuid.UUID
+    filename: str
+    download_url: str
+    expires_in_hours: int
