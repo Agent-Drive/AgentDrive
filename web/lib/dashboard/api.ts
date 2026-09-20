@@ -3,8 +3,6 @@ import "server-only";
 import { signOut, withAuth } from "@workos-inc/authkit-nextjs";
 import { notFound, redirect } from "next/navigation";
 import type {
-  ApiKeyCreateResponse,
-  ApiKeyListResponse,
   DownloadUrlResponse,
   DriveFile,
   FileListResponse,
@@ -111,19 +109,4 @@ export async function getFileDownloadUrl(fileId: string): Promise<DownloadUrlRes
   }
 
   return res.json() as Promise<DownloadUrlResponse>;
-}
-
-export function listApiKeys() {
-  return apiFetch<ApiKeyListResponse>("/v1/api-keys");
-}
-
-export function createApiKey(name: string | null) {
-  return apiFetch<ApiKeyCreateResponse>("/v1/api-keys", {
-    method: "POST",
-    body: JSON.stringify({ name }),
-  });
-}
-
-export function revokeApiKey(keyId: string) {
-  return apiFetch<void>(`/v1/api-keys/${keyId}`, { method: "DELETE" });
 }

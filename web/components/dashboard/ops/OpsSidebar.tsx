@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOutAction } from "@/lib/dashboard/actions";
 import { STORAGE_CAP_BYTES, formatCompactBytes } from "@/lib/dashboard/format";
-import { ActivityIcon, ChevronRightIcon, KeyIcon } from "./OpsIcons";
+import { AccountMenu } from "./AccountMenu";
+import { FilesIcon } from "./OpsIcons";
 
 type OpsSidebarProps = {
   usedBytes: number;
@@ -13,23 +13,8 @@ type OpsSidebarProps = {
   email: string | null;
 };
 
-function initials(firstName: string | null, lastName: string | null, email: string | null) {
-  const first = firstName?.trim().charAt(0);
-  const last = lastName?.trim().charAt(0);
-  if (first && last) return `${first}${last}`.toUpperCase();
-  if (first) return first.toUpperCase();
-  const fromEmail = email?.trim().charAt(0);
-  return (fromEmail ?? "?").toUpperCase();
-}
-
-function displayName(firstName: string | null, lastName: string | null, email: string | null) {
-  const name = `${firstName ?? ""} ${lastName ?? ""}`.trim();
-  return name || email || "Account";
-}
-
 const NAV = [
-  { href: "/dashboard", label: "Overview", icon: ActivityIcon, exact: true },
-  { href: "/dashboard/keys", label: "API keys", icon: KeyIcon, exact: false },
+  { href: "/dashboard", label: "Files", icon: FilesIcon, exact: true },
 ] as const;
 
 export function OpsSidebar({ usedBytes, firstName, lastName, email }: OpsSidebarProps) {
@@ -91,25 +76,7 @@ export function OpsSidebar({ usedBytes, firstName, lastName, email }: OpsSidebar
         </nav>
 
         <div className="mt-auto">
-          <form action={signOutAction}>
-            <button
-              type="submit"
-              className="group flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-[rgba(255,255,255,0.04)]"
-            >
-              <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[var(--accent-dim)] font-mono text-[0.6rem] font-medium text-[var(--accent)]">
-                {initials(firstName, lastName, email)}
-              </div>
-              <div className="flex min-w-0 flex-col">
-                <span className="truncate text-[0.7rem] leading-tight font-medium text-[var(--ink)]">
-                  {displayName(firstName, lastName, email)}
-                </span>
-                <span className="mt-0.5 font-mono text-[0.6rem] leading-tight text-[var(--ink-dim)]">
-                  Basic
-                </span>
-              </div>
-              <ChevronRightIcon className="ml-auto h-3.5 w-3.5 text-[var(--ink-dim)] opacity-0 transition-opacity group-hover:opacity-100" />
-            </button>
-          </form>
+          <AccountMenu firstName={firstName} lastName={lastName} email={email} />
         </div>
       </div>
     </aside>

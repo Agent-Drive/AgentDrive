@@ -8,9 +8,6 @@ export function DashboardNav({ email }: { email: string | null }) {
         <Link href="/dashboard/files" className="hover:text-cobalt">
           Files
         </Link>
-        <Link href="/dashboard/keys" className="hover:text-cobalt">
-          API keys
-        </Link>
       </nav>
       <div className="mt-12 text-xs text-steel">
         <p className="truncate">{email}</p>
