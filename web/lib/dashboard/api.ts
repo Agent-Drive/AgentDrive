@@ -1,6 +1,6 @@
 import "server-only";
 
-import { signOut, withAuth } from "@workos-inc/authkit-nextjs";
+import { withAuth } from "@workos-inc/authkit-nextjs";
 import { notFound, redirect } from "next/navigation";
 import type {
   DownloadUrlResponse,
@@ -30,7 +30,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (res.status === 401) {
-    await signOut({ returnTo: "/auth/sign-in" });
+    redirect("/auth/sign-in");
   }
 
   if (res.status === 403) {
@@ -68,7 +68,7 @@ export async function listFilesOrEmpty(): Promise<FileListResponse> {
   });
 
   if (res.status === 401) {
-    await signOut({ returnTo: "/auth/sign-in" });
+    redirect("/auth/sign-in");
   }
 
   if (!res.ok) {
@@ -101,7 +101,7 @@ export async function getFileDownloadUrl(fileId: string): Promise<DownloadUrlRes
   });
 
   if (res.status === 401) {
-    await signOut({ returnTo: "/auth/sign-in" });
+    redirect("/auth/sign-in");
   }
 
   if (!res.ok) {
